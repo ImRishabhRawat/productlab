@@ -106,16 +106,16 @@ export function NotificationRow({ notification: n, onOpen, onRemove, when, compa
   const [deleting, toggleDelete] = useUndoableRemove(n, onRemove);
   const spacing = compact ? '-mx-2 rounded-md px-2 py-2.5' : 'px-4 py-3';
   return (
-    <li className={`relative flex min-h-12 items-start gap-3 ${deleting ? '' : 'hover:bg-tint/40'} ${spacing}`}>
+    <li className={`relative flex min-h-12 gap-3 ${deleting ? 'items-center' : 'items-start hover:bg-tint/40'} ${spacing}`}>
       <span
-        className={`mt-0.5 flex size-8 shrink-0 items-center justify-center rounded-full bg-tint text-body ${deleting ? 'opacity-50' : ''}`}
+        className={`flex size-8 shrink-0 items-center justify-center rounded-full bg-tint text-body ${deleting ? 'opacity-50' : 'mt-0.5'}`}
         aria-hidden
       >
         <Icon className="size-4" />
       </span>
       <div className="min-w-0 flex-1">
         {deleting ? (
-          <p role="status" className="truncate py-1.5 text-[13.5px] leading-5 text-muted">
+          <p role="status" className="truncate text-[13.5px] leading-5 text-muted">
             <span className="font-medium text-body">Deleted</span> · {n.title}
           </p>
         ) : (
@@ -146,7 +146,7 @@ export function NotificationRow({ notification: n, onOpen, onRemove, when, compa
           icon={deleting ? Undo2 : X}
           aria-label={deleting ? undefined : 'Delete notification'}
           title={deleting ? undefined : 'Delete notification'}
-          className="relative z-10 -my-1 -mr-2"
+          className={`relative z-10 ${deleting ? '' : '-my-1 -mr-2'}`}
           onClick={toggleDelete}
         >
           {deleting && 'Undo'}

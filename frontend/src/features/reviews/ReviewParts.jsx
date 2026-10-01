@@ -1,6 +1,6 @@
 import { CalendarClock, Sun } from 'lucide-react';
 import { bucketStart } from '@product-lab/shared/dates';
-import { METRIC_COLORS, MUTED, SERIES, TRACK } from '../../components/charts/palette.js';
+import { METRIC_COLORS, MUTED, SEQUENTIAL, SERIES } from '../../components/charts/palette.js';
 import { ButtonLink } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { PageHeader } from '../../components/ui/PageHeader.jsx';
@@ -14,7 +14,7 @@ const TABS = [
 const RECORDED = ['focusMinutes', 'outcomeSet', 'blocksCompleted', 'habitsDone'];
 const NO_BUSINESS = { revenue: null, spend: null, purchases: null, contribution: null };
 const BLOCKS_DONE = { key: 'blocksCompleted', label: 'Completed', color: SERIES[0] };
-const BLOCKS_TODAY = { key: 'blocksToday', label: 'Open today', color: TRACK };
+const BLOCKS_TODAY = { key: 'blocksToday', label: 'Open today', color: SEQUENTIAL[3] };
 const BLOCKS_MISSED = { key: 'blocksOpen', label: 'Not completed', color: MUTED };
 
 export const CORRELATION = 'Shown side by side — correlation, not cause.';
@@ -23,13 +23,18 @@ export const hoursText = (hours) => fmtDuration(hours * 60);
 export const sumOf = (points, key) => points.reduce((sum, p) => sum + (p[key] ?? 0), 0);
 export const hasProductivity = (points) => RECORDED.some((key) => sumOf(points, key) > 0);
 
+export function recordedOnly(points, today, granularity = 'day') {
+  const current = bucketStart(today, granularity);
+  return points.map((p) => (p.key > current || (p.key === current && !p.revenue && !p.spend) ? { ...p, ...NO_BUSINESS } : p));
+}
+
 export function asOfToday(points, today, { granularity = 'day', openToday } = {}) {
   const current = bucketStart(today, granularity);
-  return points.map((p) => {
+  return recordedOnly(points, today, granularity).map((p) => {
     const open = Math.max((p.blocksScheduled ?? 0) - (p.blocksCompleted ?? 0), 0);
-    if (p.key < current) return { ...p, blocksOpen: open };
-    const blocksToday = p.key === current ? Math.min(openToday ?? open, open) : 0;
-    return { ...p, ...((p.key > current || (!p.revenue && !p.spend)) && NO_BUSINESS), blocksOpen: open - blocksToday, blocksToday };
+    if (p.key !== current) return { ...p, blocksOpen: open };
+    const blocksToday = Math.min(openToday ?? open, open);
+    return { ...p, blocksOpen: open - blocksToday, blocksToday };
   });
 }
 
@@ -41,7 +46,10 @@ export const countColumn = (key, header) => ({ key, header, align: 'right', form
 export const yesNo = (key, header) => ({ key, header, align: 'right', format: (v) => (v == null ? DASH : v ? 'Yes' : 'No') });
 export const dayColumn = { key: 'key', header: 'Day', format: (v) => fmtDate(v, { weekday: true }) };
 export const focusColumn = { key: 'focusMinutes', header: 'Focus', align: 'right', format: (v) => fmtDuration(v) };
-export const blockColumns = (points) => [countColumn('blocksScheduled', 'Scheduled'), ...blockSeries(points).map((s) => countColumn(s.key, s.label))];
+export const blockColumns = (points) => [
+  countColumn('blocksScheduled', 'Scheduled'),
+  ...blockSeries(points).map((s) => countColumn(s.key, s.label)),
+];
 
 export const focusProductItems = (items) =>
   items.map((p) => ({ key: p._id, label: p.name, value: p.hours, display: hoursText(p.hours), href: `/products/${p._id}` }));

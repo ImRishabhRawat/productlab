@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { Bell, BellOff, Package, Pencil, Target, Trash2 } from 'lucide-react';
 import { Link } from 'react-router';
 import { IconButton } from '../../components/ui/Button.jsx';
@@ -10,8 +11,8 @@ const refLink =
   'relative inline-flex max-w-full min-w-0 items-center gap-1 hover:text-ink hover:underline max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-3';
 
 function BlockRow({ block, enabled, busy, goal, product, off, onToggle, onEdit, onDelete }) {
-  const reminders = reminderLabel(block.reminders, off);
-  const ReminderIcon = reminders.live ? Bell : BellOff;
+  const { parts, live } = reminderLabel(block.reminders, off);
+  const ReminderIcon = live ? Bell : BellOff;
   const dim = enabled ? '' : 'opacity-60';
   return (
     <li className="grid grid-cols-[0.25rem_minmax(0,1fr)_auto] gap-x-3 px-4 py-3 lg:grid-cols-[0.25rem_minmax(0,1fr)_9.5rem_7.5rem_minmax(0,1.1fr)_auto] lg:items-center lg:gap-x-5">
@@ -46,8 +47,13 @@ function BlockRow({ block, enabled, busy, goal, product, off, onToggle, onEdit, 
         <p className="flex items-start gap-1.5">
           <ReminderIcon className="mt-px size-3.5 shrink-0" aria-hidden />
           <span className="min-w-0">
-            {reminders.text && <span className="sr-only">Reminders: </span>}
-            {reminders.text || 'No reminders'}
+            {parts.length ? <span className="sr-only">Reminders: </span> : 'No reminders'}
+            {parts.map((part, i) => (
+              <Fragment key={part}>
+                {i > 0 && ' · '}
+                <span className="inline-block">{part}</span>
+              </Fragment>
+            ))}
           </span>
         </p>
         {(goal || product) && (

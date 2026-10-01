@@ -48,8 +48,8 @@ export const remindersOff = (prefs) => (prefs ? REMINDERS.filter((r) => !prefs.e
 export function reminderLabel(reminders = {}, off = []) {
   const set = REMINDERS.filter((r) => reminders[r.key]);
   const live = set.some((r) => !off.includes(r));
-  const text = set.map((r) => `${r.label(reminders[r.key])}${live && off.includes(r) ? ' (off in settings)' : ''}`).join(' · ');
-  return { text: set.length && !live ? `${text} · off in settings` : text, live };
+  const parts = set.map((r) => `${r.label(reminders[r.key])}${live && off.includes(r) ? ' (off in settings)' : ''}`);
+  return { parts: set.length && !live ? [...parts, 'off in settings'] : parts, live };
 }
 
 function weekSpans(block) {

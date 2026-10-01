@@ -66,17 +66,17 @@ export function useTodaySummary() {
   return { query, data, now, clock, time: minutesToTime(clock.minutes), ...plan };
 }
 
-export function useTodayMutation(fn, optimistic) {
+export function useTodayMutation(fn, optimistic, queryKey = TODAY_KEY) {
   const queryClient = useQueryClient();
   const toast = useToast();
   return useMutate(fn, {
     onMutate: async (vars) => {
-      await queryClient.cancelQueries({ queryKey: TODAY_KEY });
-      queryClient.setQueryData(TODAY_KEY, (d) => d && optimistic(d, vars));
+      await queryClient.cancelQueries({ queryKey });
+      queryClient.setQueryData(queryKey, (d) => d && optimistic(d, vars));
     },
     onError: (err) => {
       toast.error(err);
-      queryClient.invalidateQueries({ queryKey: TODAY_KEY });
+      queryClient.invalidateQueries({ queryKey });
     },
   });
 }

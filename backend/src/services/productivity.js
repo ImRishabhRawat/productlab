@@ -267,7 +267,8 @@ export async function weekReview(start) {
   const today = clockIn(new Date(), tz).date;
   const weekStart = bucketStart(start ?? today, 'week');
   const weekEnd = addDays(weekStart, 6);
-  const cutoff = today >= weekStart && today < weekEnd ? today : weekEnd;
+  const inProgress = today >= weekStart && today < weekEnd;
+  const cutoff = inProgress ? ((await dataBounds({ from: weekStart, to: today }))?.to ?? today) : weekEnd;
   const previousRange = { from: addDays(weekStart, -7), to: addDays(cutoff, -7) };
   const completedIn = ({ from, to }) => ({ status: 'completed', endDate: { $gte: from, $lte: to } });
   const [business, series, previous, experiments, previousExperiments, habits, completions, review] = await Promise.all([

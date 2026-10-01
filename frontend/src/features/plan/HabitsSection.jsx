@@ -116,7 +116,7 @@ function HabitRow({ habit, done, from, weekStart, today, first, last, busy, onMo
     <li className="flex flex-wrap items-center gap-x-6 gap-y-3 px-4 py-3">
       <div className="min-w-0 flex-1 basis-40">
         <p className="truncate text-sm font-medium text-ink">{habit.name}</p>
-        <p className="text-xs text-muted">Target: {targetLabel(target).toLowerCase()}</p>
+        <p className="text-xs text-muted">Target: {targetLabel(habit.targetPerWeek).toLowerCase()}</p>
       </div>
       <div className="flex shrink-0 gap-0.5 sm:order-1">
         <IconButton icon={ArrowUp} label={`Move ${habit.name} up`} disabled={first || busy} onClick={() => onMove(-1)} />

@@ -8,7 +8,7 @@ import { blockColor, blockEnd, blockLabel, blockRange, canComplete, countsToward
 function NowLine({ time }) {
   return (
     <li className="flex items-center gap-1.5 py-0.5">
-      <span className="w-11 text-[11px] font-semibold text-primary tabular-nums">
+      <span className="w-11 text-[11px] font-semibold text-primary-hover tabular-nums">
         <span className="sr-only">Now, </span>
         {time}
       </span>
@@ -30,7 +30,7 @@ function Row({ block: b, time, onToggle }) {
           style={{ top: `${Math.round(b.elapsed * 100)}%` }}
           aria-hidden
         >
-          <span className="text-[11px] font-semibold text-primary tabular-nums">{time}</span>
+          <span className="text-[11px] font-semibold text-primary-hover tabular-nums">{time}</span>
           <span className="h-px flex-1 bg-primary" />
           <span className="-mr-1 size-2 shrink-0 rounded-full bg-primary ring-2 ring-canvas" />
         </span>

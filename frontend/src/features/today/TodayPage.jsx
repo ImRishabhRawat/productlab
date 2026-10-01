@@ -1,8 +1,8 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { flushSync } from 'react-dom';
 import { CalendarClock, Circle, CircleCheck, NotebookPen, Repeat, Timer } from 'lucide-react';
-import { useNavigate, useSearchParams } from 'react-router';
-import { timeToMinutes } from '@product-lab/shared/dates';
+import { useLocation, useNavigate, useSearchParams } from 'react-router';
+import { addDays, timeToMinutes } from '@product-lab/shared/dates';
 import { ProgressRing } from '../../components/charts/ProgressRing.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { PageHeader } from '../../components/ui/PageHeader.jsx';
@@ -29,8 +29,10 @@ const awayFromZone = (now, clock) => {
   return local.getHours() * 60 + local.getMinutes() !== clock.minutes || local.getDate() !== Number(clock.date.slice(8));
 };
 const scrollTo = (ref) => ref.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+const NO_REVIEW_UI = { day: null, open: null, edit: false, dirty: false };
+const DAY_QUERY = { placeholderData: undefined };
 
-function ProgressCard({ progress, compact }) {
+function ProgressCard({ progress, compact, className = '' }) {
   const { outcomeSet, outcomeDone, blocksTotal, blocksDone, habitsTotal, habitsDone, score } = progress;
   const parts = [
     outcomeSet
@@ -40,7 +42,7 @@ function ProgressCard({ progress, compact }) {
     habitsTotal > 0 && { key: 'habits', icon: Repeat, done: habitsDone >= habitsTotal, text: `${habitsDone}/${habitsTotal} habits` },
   ].filter(Boolean);
   return (
-    <Card className="flex items-center gap-4 p-4 sm:p-5">
+    <Card className={`flex items-center gap-4 p-4 sm:p-5 ${className}`}>
       <ProgressRing value={score} size={compact ? 64 : 76} stroke={compact ? 6 : 7} label="Today's progress" />
       <div className="min-w-0">
         <h2 className="text-[15px] font-medium text-ink">Today&apos;s progress</h2>
@@ -106,18 +108,33 @@ export default function TodayPage() {
   const { query, data, now, clock, time, blocks, current, next } = useTodaySummary();
   const prefs = useGet('/notification-preferences');
   const [params] = useSearchParams();
+  const location = useLocation();
   const navigate = useNavigate();
   const wide = useMediaQuery('(min-width: 64rem)');
   const [focusOpen, setFocusOpen] = useState(false);
-  const [reviewOpen, setReviewOpen] = useState(null);
+  const [reviewState, setReviewState] = useState({ ...NO_REVIEW_UI, link: null });
   const habitsRef = useRef(null);
   const reviewRef = useRef(null);
   const saveOutcome = useSaveOutcome(data?.date);
+  const today = data?.date;
+  const dayStart = prefs.data?.quietEnd;
+  const lateNight = Boolean(dayStart) && clock.date === today && clock.minutes < timeToMinutes(dayStart);
+  const defaultDay = lateNight ? addDays(today, -1) : today;
+  const reviewDay = reviewState.dirty ? reviewState.day : defaultDay;
+  const past = Boolean(today) && reviewDay !== today;
+  const pastReview = useGet(past ? `/reviews/daily/${reviewDay}` : null, null, DAY_QUERY);
+  const pastOutcome = useGet(past ? `/daily-outcomes/${reviewDay}` : null, null, DAY_QUERY);
   const deepLink = params.get('review') === '1';
-  const ready = Boolean(data);
+  const ready = Boolean(data) && !prefs.isPending;
+
+  if (deepLink && ready && reviewState.link !== location.key) {
+    setReviewState((s) =>
+      s.dirty ? { ...s, link: location.key } : { ...NO_REVIEW_UI, day: defaultDay, open: true, edit: 'link', link: location.key },
+    );
+  }
 
   useEffect(() => {
-    if (deepLink && ready) navigate({ search: '?review=1', hash: '#review' }, { replace: true });
+    if (deepLink && ready) navigate({ hash: '#review' }, { replace: true });
   }, [deepLink, ready, navigate]);
 
   if (!data) {
@@ -135,8 +152,15 @@ export default function TodayPage() {
   const reviewAt = prefs.data?.dailyReviewTime;
   const evening = (reviewAt && clock.minutes >= timeToMinutes(reviewAt)) || (blocks.length > 0 && blocks.every((b) => b.state === 'past'));
   const onToggleBlock = (block) => saveOutcome.mutate(toggleBlock(data.outcome, block._id));
+  const reviewUi = reviewState.day === reviewDay ? reviewState : NO_REVIEW_UI;
+  const updateReview = (patch) =>
+    setReviewState((s) => {
+      const base = s.day === reviewDay ? s : { ...NO_REVIEW_UI, link: s.link, day: reviewDay };
+      const next = patch ? { ...base, ...patch } : { ...NO_REVIEW_UI, link: s.link };
+      return Object.keys(next).every((k) => next[k] === s[k]) ? s : next;
+    });
   const openReview = () => {
-    flushSync(() => setReviewOpen(true));
+    flushSync(() => updateReview({ open: true }));
     scrollTo(reviewRef);
   };
   const logHabit = () => {
@@ -171,18 +195,21 @@ export default function TodayPage() {
   const review = (
     <ReviewCard
       cardRef={reviewRef}
-      date={data.date}
-      review={data.review}
-      outcome={data.outcome}
-      open={reviewOpen ?? (deepLink || evening)}
-      onOpenChange={setReviewOpen}
-      startEditing={deepLink && Boolean(data.review) && !data.review.tomorrowOutcome}
+      date={reviewDay}
+      today={data.date}
+      review={past ? pastReview.data : data.review}
+      outcome={past ? pastOutcome.data : data.outcome}
+      error={past && (pastReview.error ?? pastOutcome.error)}
+      onRetry={() => [pastReview, pastOutcome].forEach((q) => q.refetch())}
+      open={reviewUi.open ?? (past ? pastReview.data === null : evening)}
+      edit={reviewUi.edit}
+      onChange={updateReview}
     />
   );
-  const progress = <ProgressCard progress={data.progress} compact={!wide} />;
+  const progress = <ProgressCard progress={data.progress} compact={!wide} className="lg:order-first" />;
   const quickActions = <QuickActions actions={actions} />;
   const focus = <FocusCard focus={data.focus} onStart={() => setFocusOpen(true)} />;
-  const habits = <HabitsCard cardRef={habitsRef} habits={data.habits} date={data.date} />;
+  const habits = <HabitsCard cardRef={habitsRef} habits={data.habits} date={data.date} progress={data.progress} lateNight={lateNight} />;
   const business = <BusinessSnapshot business={data.business} />;
   const week = (
     <Suspense fallback={<Skeleton className="h-80" />}>
@@ -204,42 +231,27 @@ export default function TodayPage() {
         title="Today"
         description={`${fmtDate(data.date, { weekday: true })} · ${time}${awayFromZone(now, clock) ? ` · ${data.timezone} time` : ''}`}
       />
-      {wide ? (
-        <div className="grid grid-cols-[minmax(0,1fr)_20rem] items-start gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
-          <div className="flex min-w-0 flex-col gap-4">
-            {nowCard}
-            {outcomeCard}
-            {timeline}
-            {habits}
-            {review}
-          </div>
-          <div className="flex min-w-0 flex-col gap-4">
-            {progress}
-            {quickActions}
-            {focus}
-            {business}
-            {week}
-            <GoalsSummary />
-            {notifications}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 lg:grid lg:grid-cols-[minmax(0,1fr)_20rem] lg:grid-rows-[auto_1fr] lg:items-start lg:gap-4 xl:grid-cols-[minmax(0,1fr)_24rem]">
+        <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
           {nowCard}
           {outcomeCard}
+        </div>
+        <div className="flex min-w-0 flex-col gap-3 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:gap-4">
           {quickActions}
-          {running && focus}
+          {(running || wide) && focus}
           {progress}
           {business}
           {week}
           <GoalsSummary />
           {notifications}
+        </div>
+        <div className="flex min-w-0 flex-col gap-3 lg:gap-4">
           {timeline}
-          {!running && focus}
+          {!running && !wide && focus}
           {habits}
           {review}
         </div>
-      )}
+      </div>
       <StartFocusModal open={focusOpen} onClose={() => setFocusOpen(false)} defaults={focusDefaults} />
     </>
   );

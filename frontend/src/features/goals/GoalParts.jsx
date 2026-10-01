@@ -105,14 +105,15 @@ export function GoalMeter({ goal, compact = false }) {
       </p>
     );
   }
-  const target = fmt(goal, goal.targetValue, { compact });
+  const short = compact && !(goal.current < goal.targetValue && fmt(goal, goal.current, { compact }) === fmt(goal, goal.targetValue, { compact }));
+  const target = fmt(goal, goal.targetValue, { compact: short });
   return (
     <Meter
       value={goal.current ?? 0}
       max={goal.targetValue}
       tone={goalTone(goal)}
       height={compact ? 6 : 8}
-      label={goal.current == null ? `No value yet · target ${target}` : `${fmt(goal, goal.current, { compact, unit: false })} of ${target}`}
+      label={goal.current == null ? `No value yet · target ${target}` : `${fmt(goal, goal.current, { compact: short, unit: false })} of ${target}`}
       valueLabel={fmtPercent(goal.progress)}
     />
   );

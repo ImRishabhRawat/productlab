@@ -11,7 +11,7 @@ import { fmtDateTime, fmtNumber, fmtRelative, plural } from '../../lib/format.js
 import { usePush } from '../../lib/push.js';
 import { useInstall } from '../../lib/pwa.js';
 import { useMutate } from '../../lib/queries.js';
-import { HomeScreenSteps, PushKeyRetry } from '../notifications/EnableNotifications.jsx';
+import { HomeScreenSteps, usePushKeyError } from '../notifications/EnableNotifications.jsx';
 
 const INSTALL_STEPS = [
   ['Android · Chrome', 'open the ⋮ menu → Install app'],
@@ -66,6 +66,7 @@ function TestNotification() {
 
 export function DevicesCard({ devices }) {
   const push = usePush();
+  const [keyError, retrying] = usePushKeyError(push);
   const toast = useToast();
   const [removing, setRemoving] = useState(null);
   const remove = useMutate((id) => api(`/push/devices/${id}`, { method: 'DELETE' }));
@@ -87,7 +88,6 @@ export function DevicesCard({ devices }) {
   if (devices.isPending) content = <Skeleton className="h-24" />;
   else if (!devices.data) content = <ErrorState error={devices.error} onRetry={devices.refetch} compact />;
   else if (!items.length) {
-    const keyError = push.status === 'error';
     content = (
       <EmptyState
         compact
@@ -98,7 +98,9 @@ export function DevicesCard({ devices }) {
         }
         action={
           keyError ? (
-            <PushKeyRetry />
+            <Button size="sm" loading={retrying} onClick={push.retry}>
+              Try again
+            </Button>
           ) : (
             push.status === 'off' && (
               <Button size="sm" onClick={push.enable} loading={push.busy}>

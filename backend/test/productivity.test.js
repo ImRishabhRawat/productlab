@@ -463,6 +463,18 @@ describe('series', () => {
     }
   });
 
+  it('compares a week in progress only through its last recorded day', async () => {
+    const metric = await create('/metrics', { productId: kids._id, date: '2026-09-28', spend: 200, revenue: 600, purchases: 2 });
+    setNow('2026-09-30T06:30:00.000Z');
+    try {
+      const { business } = (await api.get('/reviews/weekly')).body;
+      expect(business.previousRange).toEqual({ from: '2026-09-21', to: '2026-09-21' });
+    } finally {
+      setNow(NOW);
+      await api.delete(`/metrics/${metric._id}`);
+    }
+  });
+
   it('names the product of each finished experiment and lists only habits that existed that week', async () => {
     const week = (start) => api.get(`/reviews/weekly?start=${start}`).then((res) => res.body);
     expect((await week('2026-09-21')).business.experiments).toEqual([

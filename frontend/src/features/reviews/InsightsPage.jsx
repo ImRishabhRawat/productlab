@@ -270,7 +270,7 @@ export default function InsightsPage() {
                         </ChartCard>
                         <ChartCard
                           title="Habit completion"
-                          subtitle={`${per} · check-ins against weekly targets`}
+                          subtitle={`${per} · against weekly targets`}
                           value={habitsPossible ? fmtPercent(percent(total('habitsDone'), habitsPossible), 0) : null}
                           height={240}
                           {...state}
@@ -370,4 +370,47 @@ export default function InsightsPage() {
                       subtitle={per}
                       height={260}
                       {...state}
-          
+                      empty={Boolean(data) && !total('revenue') && !total('spend')}
+                      emptyMessage="No ad metrics recorded in this period."
+                      table={seriesTable(points, granularity, ['revenue', 'spend'])}
+                    >
+                      <TrendChart
+                        data={points}
+                        granularity={granularity}
+                        format="currency"
+                        series={[
+                          { key: 'revenue', label: 'Revenue', color: METRIC_COLORS.revenue },
+                          { key: 'spend', label: 'Ad spend', color: METRIC_COLORS.spend },
+                        ]}
+                      />
+                    </ChartCard>
+                    <ChartCard
+                      title="Experiments completed"
+                      subtitle="Per week"
+                      value={experimentsDone ? fmtNumber(experimentsDone) : null}
+                      height={260}
+                      {...queryState(weekly)}
+                      empty={Boolean(weekly.data) && !experimentsDone}
+                      emptyMessage="No experiments completed in this period."
+                      table={{
+                        rowKey: 'key',
+                        rows: weekPoints,
+                        columns: [periodColumn('week', 'key', 'Week'), countColumn('experimentsCompleted', 'Completed')],
+                      }}
+                    >
+                      <ColumnChart
+                        data={weekPoints}
+                        granularity="week"
+                        series={[{ key: 'experimentsCompleted', label: 'Experiments', color: SERIES[0] }]}
+                      />
+                    </ChartCard>
+                  </div>
+                </Section>
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </>
+  );
+}

@@ -3,7 +3,6 @@ import { CircleCheck, Plus, Target } from 'lucide-react';
 import { Link } from 'react-router';
 import { GOAL_LEVELS, GOAL_STATUSES, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
 import { isoDateIn } from '@product-lab/shared/dates';
-import { round } from '@product-lab/shared/metrics';
 import { ProgressRing } from '../../components/charts/ProgressRing.jsx';
 import { Badge } from '../../components/ui/Badge.jsx';
 import { Button } from '../../components/ui/Button.jsx';
@@ -29,7 +28,8 @@ function Summary({ goals, loading }) {
   const year = today.slice(0, 4);
   const active = goals.filter((g) => g.status === 'active');
   const targeted = active.filter((g) => g.progress != null);
-  const average = targeted.length ? round(targeted.reduce((sum, g) => sum + g.progress, 0) / targeted.length, 1) : null;
+  const average = targeted.length ? targeted.reduce((sum, g) => sum + g.progress, 0) / targeted.length : null;
+  const shown = average == null || average >= 100 ? average : Math.min(Math.round(average), 99);
   const achieved = goals
     .filter((g) => g.status === 'achieved' && g.achievedAt && isoDateIn(g.achievedAt, timezone).startsWith(year))
     .sort((a, b) => String(b.achievedAt).localeCompare(String(a.achievedAt)));
@@ -44,8 +44,8 @@ function Summary({ goals, loading }) {
           {loading ? (
             <Skeleton className="size-16 shrink-0" style={{ borderRadius: '50%' }} />
           ) : (
-            <ProgressRing value={average} size={64} stroke={7} label="Average progress of active goals">
-              <span className="text-[13px] font-semibold text-ink tabular-nums">{average == null ? '—' : `${Math.round(average)}%`}</span>
+            <ProgressRing value={shown} size={64} stroke={7} label="Average progress of active goals">
+              <span className="text-[13px] font-semibold text-ink tabular-nums">{shown == null ? '—' : `${shown}%`}</span>
             </ProgressRing>
           )}
           <div className="min-w-0">
@@ -74,12 +74,12 @@ function Summary({ goals, loading }) {
 
 function ProductLinks({ products }) {
   return (
-    <ul className="relative z-[2] flex flex-wrap gap-1.5 max-md:gap-y-2" aria-label="Linked products">
+    <ul className="relative z-[2] flex flex-wrap gap-1.5 max-md:gap-y-3" aria-label="Linked products">
       {products.map((p) => (
         <li key={p._id} className="max-w-full min-w-0">
           <Link
             to={`/products/${p._id}`}
-            className="relative flex min-w-0 items-center gap-1 rounded-full border border-hairline px-2 py-0.5 text-xs text-body hover:bg-tint hover:text-ink max-md:min-h-8 max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1"
+            className="relative flex min-w-0 items-center gap-1 rounded-full border border-hairline px-2 py-0.5 text-xs text-body hover:bg-tint hover:text-ink max-md:min-h-8 max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-1.5"
           >
             <span className="truncate">{p.name}</span>
             {p.status === 'killed' && <span className="shrink-0 text-muted">· killed</span>}

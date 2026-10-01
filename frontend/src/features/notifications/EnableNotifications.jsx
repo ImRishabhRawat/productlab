@@ -45,17 +45,15 @@ export function HomeScreenSteps() {
   );
 }
 
-export function PushKeyRetry() {
+export function usePushKeyError(push) {
   const key = usePushKey();
-  return (
-    <Button size="sm" loading={key.isFetching} onClick={() => key.refetch()}>
-      Try again
-    </Button>
-  );
+  const retrying = push.status === 'loading' && !key.data && key.isFetching && key.errorUpdatedAt > 0;
+  return [push.status === 'error' || retrying, retrying];
 }
 
 export function EnableNotifications({ compact = false }) {
   const push = usePush();
+  const [keyError, retrying] = usePushKeyError(push);
   const [dismissed, setDismissed] = useState(readDismissed);
 
   const dismiss = () => {
@@ -67,8 +65,20 @@ export function EnableNotifications({ compact = false }) {
     }
   };
 
-  if (push.status === 'loading') return null;
   if (compact && (dismissed || !['off', 'install'].includes(push.status))) return null;
+
+  if (keyError) {
+    return (
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <p className="text-[13px] text-muted">Couldn’t check push notifications on the server. In-app notifications still work.</p>
+        <Button size="sm" loading={retrying} onClick={push.retry}>
+          Try again
+        </Button>
+      </div>
+    );
+  }
+
+  if (push.status === 'loading') return null;
 
   if (push.status === 'on') {
     return (
@@ -80,15 +90,6 @@ export function EnableNotifications({ compact = false }) {
         <Button size="sm" icon={BellOff} loading={push.busy} onClick={push.disable}>
           Turn off on this device
         </Button>
-      </div>
-    );
-  }
-
-  if (push.status === 'error') {
-    return (
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <p className="text-[13px] text-muted">Couldn’t check push notifications on the server. In-app notifications still work.</p>
-        <PushKeyRetry />
       </div>
     );
   }
@@ -130,7 +131,7 @@ export function EnableNotifications({ compact = false }) {
                 Enable notifications
               </Button>
               {compact && (
-                <ButtonLink to="/settings#notifications" variant="ghost" size="sm">
+                <ButtonLink to="/settings#notifications" size="sm">
                   Choose notifications
                 </ButtonLink>
               )}
