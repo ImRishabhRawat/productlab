@@ -1,0 +1,15 @@
+{
+  "name": "@product-lab/shared",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./constants": "./src/constants.js",
+    "./metrics": "./src/metrics.js",
+    "./dates": "./src/dates.js",
+    "./schemas": "./src/schemas.js"
+  },
+  "dependencies": {
+    "zod": "^4.6.5"
+  }
+}

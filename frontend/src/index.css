@@ -1,0 +1,87 @@
+@import "tailwindcss";
+
+@theme {
+  --color-*: initial;
+  --color-white: #ffffff;
+  --color-black: #000000;
+
+  --color-page: #f5f0e8;
+  --color-canvas: #faf9f5;
+  --color-tint: #efe9de;
+  --color-tint-strong: #e8e0d2;
+  --color-hairline: #e6dfd8;
+  --color-hairline-soft: #ebe6df;
+  --color-dark: #181715;
+  --color-dark-soft: #252320;
+
+  --color-ink: #141413;
+  --color-body: #3d3d3a;
+  --color-muted: #6c6a64;
+  --color-faint: #706d66;
+
+  --color-accent: #cc785c;
+  --color-primary: #b35e43;
+  --color-primary-hover: #9a4d35;
+
+  --color-positive: #1f7a3f;
+  --color-negative: #b3372f;
+  --color-warning: #8a5a00;
+
+  --color-good: #0ca30c;
+  --color-warn: #fab219;
+  --color-serious: #ec835a;
+  --color-critical: #d03b3b;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Cormorant Garamond", "Tiempos Headline", Georgia, "Times New Roman", serif;
+
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+
+  --shadow-sm: 0 1px 3px rgb(20 20 19 / 0.08);
+  --shadow-md: 0 10px 30px -8px rgb(20 20 19 / 0.18), 0 2px 6px rgb(20 20 19 / 0.06);
+}
+
+@layer base {
+  html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  body {
+    @apply bg-page font-sans text-sm text-ink;
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  @media (width < 48rem) {
+    main :is(a[href], button, input, select, textarea, summary, [tabindex]) {
+      scroll-margin-block: calc(4rem + env(safe-area-inset-top)) calc(4.5rem + env(safe-area-inset-bottom));
+    }
+  }
+
+  ::selection {
+    background: rgb(204 120 92 / 0.22);
+  }
+
+  dialog::backdrop {
+    background: rgb(20 20 19 / 0.32);
+  }
+}
+
+@keyframes pulse-soft {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+@utility skeleton {
+  background: var(--color-tint);
+  animation: pulse-soft 1.6s ease-in-out infinite;
+}

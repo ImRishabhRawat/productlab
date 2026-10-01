@@ -1,0 +1,21 @@
+{
+  "id": "/",
+  "name": "Product Lab",
+  "short_name": "Product Lab",
+  "description": "Business control room and personal command center.",
+  "start_url": "/today",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f5f0e8",
+  "theme_color": "#f5f0e8",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Today", "url": "/today", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Business overview", "short_name": "Overview", "url": "/", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Notifications", "url": "/notifications", "icons": [{ "src": "/icon-192.png", "sizes": "192x192" }] }
+  ]
+}
