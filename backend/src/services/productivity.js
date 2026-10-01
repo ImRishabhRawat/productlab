@@ -140,6 +140,7 @@ export async function todaySummary(now = new Date()) {
     next: next && { ...next, startsIn: blockSpan(next).from - clock.minutes },
     outcome: namedOutcome,
     habits: habits.map((h) => ({ _id: h._id, name: h.name, targetPerWeek: h.targetPerWeek, done: done.has(String(h._id)) })),
+    habitTargets: Object.fromEntries(habits.map((h) => [String(h._id), habitTarget(h.targetPerWeek, weekDays(h, week))])),
     focus: { running: namedRunning, minutesToday: round(sessions.reduce((s, x) => s + focusMinutes(x, now), 0), 0) },
     review: review ?? null,
     progress: { ...progress, score: dayProgress({ ...progress, blocksDue: progress.blocksTotal }) },
@@ -311,6 +312,7 @@ export async function weekReview(start) {
         const dates = completions.filter((c) => String(c.habitId) === String(h._id)).map((c) => c.date);
         return { _id: h._id, name: h.name, targetPerWeek: h.targetPerWeek, done: dates.length, dates };
       }),
+    habitTargets: Object.fromEntries(habits.filter((h) => h.since <= weekEnd).map((h) => [String(h._id), habitTarget(h.targetPerWeek, weekDays(h, weekStart))])),
     review: review ?? null,
   };
 }

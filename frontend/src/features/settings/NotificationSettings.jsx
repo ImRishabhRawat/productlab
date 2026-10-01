@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { PRODUCTIVITY_LABELS, PURCHASE_MILESTONES, WEEKDAYS } from '@product-lab/shared/constants';
+import { LAST_WEEK_REVIEW_DAYS, PRODUCTIVITY_LABELS, PURCHASE_MILESTONES, WEEKDAYS } from '@product-lab/shared/constants';
 import { TIME_RE } from '@product-lab/shared/dates';
 import { Card, CardHeader } from '../../components/ui/Card.jsx';
 import { Input, Select, Switch } from '../../components/ui/Field.jsx';
@@ -12,7 +12,6 @@ import { EnableNotifications } from '../notifications/EnableNotifications.jsx';
 const PREFS_KEY = ['get', '/notification-preferences', {}];
 const SAVE_KEY = ['notification-preferences'];
 const WEEKDAY_OPTIONS = WEEKDAYS.map((d) => ({ value: String(d), label: PRODUCTIVITY_LABELS.weekday[d] }));
-const LAST_WEEK_REVIEW_DAYS = [1, 2, 3];
 const MILESTONES = `${PURCHASE_MILESTONES.slice(0, 4).join(', ')}…`;
 
 const merge = (prefs, patch) => ({ ...prefs, ...patch, business: { ...prefs.business, ...patch.business } });

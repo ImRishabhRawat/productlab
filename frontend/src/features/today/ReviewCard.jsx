@@ -43,7 +43,7 @@ function ReviewForm({ date, label, review, outcome, onDirty, onSaved }) {
   async function submit(e) {
     e.preventDefault();
     const body = form.validate(dailyReviewSchema, {
-      ...(hasOutcome && { outcomeCompleted: answer }),
+      ...(hasOutcome && picked !== undefined && { outcomeCompleted: picked }),
       ...Object.fromEntries(FIELDS.map((f) => [f.name, form.values[f.name].trim()])),
     });
     if (!body) return;

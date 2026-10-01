@@ -45,7 +45,7 @@ export function HabitsCard({ habits, date, progress, lateNight, className = '', 
     ['get', '/habits/completions', params],
   );
   const toggle = isToday ? checkToday : checkPast;
-  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
+  const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i)).filter((d) => d <= date);
   const logged = new Set((history.data?.items ?? []).map((c) => `${c.habitId}|${c.date}`));
   const doneOn = (h, d) => (d === date ? h.done : logged.has(`${h._id}|${d}`));
   const subtitle = isToday
@@ -97,7 +97,7 @@ export function HabitsCard({ habits, date, progress, lateNight, className = '', 
           )}
           <ul className="mt-2 divide-y divide-hairline-soft">
             {habits.map((h) => {
-              const strip = days.map((d) => ({ date: d, value: d > date ? null : doneOn(h, d) ? 1 : 0 }));
+              const strip = days.map((d) => ({ date: d, value: doneOn(h, d) ? 1 : 0 }));
               const count = strip.filter((s) => s.value).length;
               const done = doneOn(h, day);
               return (

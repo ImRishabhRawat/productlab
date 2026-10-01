@@ -2,7 +2,7 @@ import { useId } from 'react';
 import { TriangleAlert } from 'lucide-react';
 import { BLOCK_CATEGORIES, PRODUCTIVITY_LABELS, WEEKDAYS } from '@product-lab/shared/constants';
 import { TIME_RE, blockSpan } from '@product-lab/shared/dates';
-import { timeBlockSchema } from '@product-lab/shared/schemas';
+import { beforeEndError, timeBlockSchema } from '@product-lab/shared/schemas';
 import { Button } from '../../components/ui/Button.jsx';
 import { Field, FormField, Switch } from '../../components/ui/Field.jsx';
 import { Modal } from '../../components/ui/Modal.jsx';
@@ -62,6 +62,7 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
   const toggleDay = (d) => form.set('days', sortDays(v.days.includes(d) ? v.days.filter((x) => x !== d) : [...v.days, d]));
   const silenced = remindersOff(prefs.data).map((r) => r.key);
   const offHint = (key) => (v.reminders[key] && silenced.includes(key) ? 'Off in Notification settings' : undefined);
+  const endMinutes = [5, 10, 15].filter((m) => !span || !beforeEndError({ ...v, reminders: { beforeEnd: m } }));
 
   async function submit() {
     const valid = form.validate(timeBlockSchema, {
@@ -205,7 +206,7 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
               label="Before end"
               as="select"
               placeholder="Off"
-              options={minuteOptions([5, 10, 15].filter((m) => !span || m < span.minutes), v.reminders.beforeEnd)}
+              options={minuteOptions(endMinutes, v.reminders.beforeEnd)}
               hint={offHint('beforeEnd')}
             />
           </div>

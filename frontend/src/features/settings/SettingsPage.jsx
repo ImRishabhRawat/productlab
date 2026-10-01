@@ -150,7 +150,7 @@ export default function SettingsPage() {
   return (
     <>
       <PageHeader title="Settings" />
-      <nav aria-label="Settings sections" className="mb-4 flex gap-1.5 overflow-x-auto pb-1 lg:hidden">
+      <nav aria-label="Settings sections" className="mb-4 flex flex-wrap gap-1.5 lg:hidden">
         {SECTIONS.map(([id, label]) => (
           <a
             key={id}

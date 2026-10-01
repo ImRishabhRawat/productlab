@@ -3,12 +3,12 @@ import {
   blockSpan,
   bucketStart,
   clockIn,
-  daysBetween,
   minutesToTime,
   timeToMinutes,
   weekdayOf,
   zonedInstant,
 } from '@product-lab/shared/dates';
+import { LAST_WEEK_REVIEW_DAYS } from '@product-lab/shared/constants';
 import { round } from '@product-lab/shared/metrics';
 import DailyOutcome from '../models/DailyOutcome.js';
 import DailyReview from '../models/DailyReview.js';
@@ -211,7 +211,7 @@ export async function tick(now = new Date()) {
   }
   if (clock.weekday === prefs.weeklyReviewDay && due(clock.date, timeToMinutes(prefs.weeklyReviewTime))) {
     const thisWeek = bucketStart(clock.date, 'week');
-    const ended = daysBetween(thisWeek, clock.date) < 3;
+    const ended = LAST_WEEK_REVIEW_DAYS.includes(clock.weekday);
     const weekStart = ended ? addDays(thisWeek, -7) : thisWeek;
     const to = ended ? addDays(weekStart, 6) : clock.date;
     const [business, focus] = await Promise.all([

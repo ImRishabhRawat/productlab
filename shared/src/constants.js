@@ -130,6 +130,7 @@ export const FOCUS_MAX_MINUTES = 240;
 export const OUTCOME_MAX_TASKS = 10;
 export const NOTIFICATION_CATEGORIES = ['schedule', 'outcome', 'focus', 'review', 'habit', 'business', 'system'];
 export const WEEKDAYS = [1, 2, 3, 4, 5, 6, 0];
+export const LAST_WEEK_REVIEW_DAYS = [1, 2, 3];
 export const PURCHASE_MILESTONES = [10, 25, 50, 100, 250, 500, 1000];
 export const MIN_DATE = '2000-01-01';
 export const MAX_SERIES_DAYS = 3660;

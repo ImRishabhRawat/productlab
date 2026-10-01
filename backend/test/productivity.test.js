@@ -552,6 +552,32 @@ describe('habit targets', () => {
     expect(review.productivity.current).toMatchObject({ habitsDone: 11, habitsPossible: 11 });
   });
 
+  it('reports each weekly habit target prorated from the day the habit started', async () => {
+    ist('2026-09-24', '09:00');
+    const read = await create('/habits', { name: 'Read' });
+    ist('2026-09-29', '08:00');
+    const stretch = await create('/habits', { name: 'Stretch', targetPerWeek: 7 });
+    setNow(NOW);
+    try {
+      const week = (await api.get('/reviews/weekly?start=2026-09-21')).body;
+      expect(week.habits.map((h) => [h.name, h.targetPerWeek, week.habitTargets[h._id]])).toEqual([
+        ['Walk', 7, 7],
+        ['Gym', 4, 4],
+        ['Read', 7, 4],
+      ]);
+      const today = (await api.get('/productivity/today')).body;
+      expect(today.habits.map((h) => [h.name, today.habitTargets[h._id]])).toEqual([
+        ['Walk', 7],
+        ['Gym', 4],
+        ['Read', 7],
+        ['Stretch', 6],
+      ]);
+    } finally {
+      await api.delete(`/habits/${read._id}`);
+      await api.delete(`/habits/${stretch._id}`);
+    }
+  });
+
   it('counts a missed check-in only once the weekly target can no longer be met', async () => {
     const days = (await api.get('/productivity/series?from=2026-09-28&to=2026-09-30&granularity=day')).body.points;
     expect(days.map((p) => [p.key, p.habitsDone, p.habitsPossible, p.habitRate])).toEqual([

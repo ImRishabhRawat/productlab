@@ -78,7 +78,8 @@ function Filters({ unreadOnly, category, unread, onChange }) {
         ref={categories}
         role="group"
         aria-label="Category"
-        className="-m-1 flex min-w-0 flex-1 flex-wrap gap-1.5 p-1 max-md:flex-nowrap max-md:overflow-x-auto"
+        onFocus={(e) => e.target.matches(':focus-visible') && e.target.scrollIntoView({ block: 'nearest', inline: 'nearest' })}
+        className="-m-1 flex min-w-0 flex-1 scroll-px-1.5 flex-wrap gap-1.5 p-1 max-md:flex-nowrap max-md:overflow-x-auto"
       >
         {NOTIFICATION_CATEGORIES.map((c) => (
           <button
