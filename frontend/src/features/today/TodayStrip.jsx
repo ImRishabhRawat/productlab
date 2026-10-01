@@ -5,7 +5,8 @@ import { ButtonLink } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { ErrorState, Skeleton } from '../../components/ui/States.jsx';
 import { fmtDuration } from '../../lib/format.js';
-import { blockColor, useTodaySummary } from './useTodaySummary.js';
+import { blockColor } from '../plan/schedule.js';
+import { useTodaySummary } from './useTodaySummary.js';
 
 export function TodayStrip({ className = '' }) {
   const { query, data, time, blocks, current, next } = useTodaySummary();
@@ -34,7 +35,7 @@ export function TodayStrip({ className = '' }) {
             {block ? (
               <>
                 <p className="flex min-w-0 items-center gap-1.5 text-[15px] font-medium text-ink">
-                  <Dot color={blockColor(block)} />
+                  <Dot color={blockColor(block.category)} />
                   <span className="truncate">{block.name}</span>
                 </p>
                 <p className="text-xs text-muted">{current ? `${fmtDuration(current.remaining)} left` : `${block.start} · in ${fmtDuration(block.startsIn)}`}</p>

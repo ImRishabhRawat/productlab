@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { ArrowRightLeft, Check, ChevronDown, CircleCheck, Package, Pencil, Target, Trash2 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router';
 import { GOAL_PRODUCT_TRACKING, GOAL_STATUSES, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
-import { daysBetween, isoDateIn } from '@product-lab/shared/dates';
+import { daysBetween, goalPeriod, isoDateIn } from '@product-lab/shared/dates';
 import { Meter } from '../../components/charts/Meter.jsx';
 import { ProgressRing } from '../../components/charts/ProgressRing.jsx';
 import { Badge, Dot, StatusBadge } from '../../components/ui/Badge.jsx';
@@ -17,16 +17,16 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { DASH, fmtDate, fmtPercent, fmtRange } from '../../lib/format.js';
 import { metricOptions } from '../../lib/metricDisplay.js';
-import { useAnalytics, useItem, useList, useRemove } from '../../lib/queries.js';
+import { useAnalytics, useGet, useItem, useList, useRemove } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
 import { statusMeta } from '../../lib/status.js';
+import { CORRELATION } from '../reviews/ReviewParts.jsx';
 import { BlocksCard, ExperimentResults, FocusCard, ProductResults, RESULT_METRICS } from './GoalChain.jsx';
 import { GoalFormModal } from './GoalFormModal.jsx';
 import {
   QuickUpdate,
   TONE_COLORS,
   fmtSpan,
-  goalPeriod,
   goalSource,
   goalTone,
   isMoneyGoal,
@@ -222,7 +222,8 @@ export default function GoalDetailPage() {
   const results = { from: period.from, to: period.to };
   const products = useAnalytics('products', results, { enabled: linked && started });
   const experiments = useAnalytics('experiments', results, { enabled: linked && started });
-  const sessions = useList('focus-sessions', { goalId: id, limit: 500 }, { enabled: Boolean(g) && !removing });
+  const focus = useGet('/productivity/series', { ...results, goalId: id }, { enabled: started && !removing });
+  const sessions = useList('focus-sessions', { goalId: id, limit: 20 }, { enabled: Boolean(g) && !removing });
   const blocks = useList('time-blocks');
   const remove = useRemove('goals');
 
@@ -310,10 +311,10 @@ export default function GoalDetailPage() {
 
       <Section
         title="Time invested"
-        description={linked && started ? 'Shown side by side — correlation, not cause.' : 'Focus sessions and scheduled blocks linked to this goal'}
+        description={linked && started ? CORRELATION : 'Focus sessions and scheduled blocks linked to this goal'}
       >
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-          <FocusCard goal={g} period={period} query={sessions} />
+          <FocusCard goal={g} period={period} series={focus} sessions={sessions} />
           <BlocksCard goal={g} query={blocks} />
         </div>
       </Section>

@@ -1,8 +1,7 @@
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
 import { blockSpan, blockState, carryOver, clockIn, minutesToTime } from '@product-lab/shared/dates';
-import { BLOCK_COLORS } from '../../components/charts/palette.js';
+import { countsTowardProgress } from '@product-lab/shared/metrics';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { api } from '../../lib/api.js';
 import { useGet, useMutate } from '../../lib/queries.js';
@@ -13,12 +12,10 @@ export const TODAY_KEY = ['get', '/productivity/today', {}];
 export const LIVE = { refetchInterval: 300_000, refetchOnWindowFocus: true };
 const EMPTY_OUTCOME = { title: '', done: false, goalId: null, productId: null, experimentId: null, tasks: [], completedBlocks: [] };
 
-export const blockColor = (b) => BLOCK_COLORS[b.category] ?? BLOCK_COLORS.other;
-export const blockLabel = (b) => PRODUCTIVITY_LABELS.blockCategory[b.category] ?? b.category;
 export const blockEnd = (b) => (b.overnight ? `${b.end} (next day)` : b.end);
 export const blockRange = (b) => (b.carry ? `since ${b.start} yesterday · until ${b.end}` : `${b.start}–${blockEnd(b)}`);
-export const countsTowardProgress = (b) => b.category !== 'break' && !b.carry;
-export const canComplete = (b) => countsTowardProgress(b) && b.state !== 'upcoming';
+export const countsToday = (b) => countsTowardProgress(b) && !b.carry;
+export const canComplete = (b) => countsToday(b) && b.state !== 'upcoming';
 
 function schedule(data, clock) {
   const sameDay = data.date === clock.date;

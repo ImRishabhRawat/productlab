@@ -9,23 +9,36 @@ export function useRefs(productId) {
     goals: goals.data?.items ?? [],
     products: products.data?.items ?? [],
     experiments: (experiments.data?.items ?? []).filter((x) => String(x.productId) === String(productId)),
+    errors: { goals: goals.error, products: products.error },
   };
 }
 
+export const goalOptions = (goals, selectedId) =>
+  goals.filter((g) => g.status === 'active' || g._id === selectedId).map((g) => ({ value: g._id, label: g.title }));
+
+export const productOptions = (products, selectedId) =>
+  products.filter((p) => p.status !== 'killed' || p._id === selectedId).map((p) => ({ value: p._id, label: p.name }));
+
 export function RefFields({ form, refs: { goals, products, experiments } }) {
   const { goalId, productId } = form.values;
-  const goalOptions = goals.filter((g) => g.status === 'active' || g._id === goalId).map((g) => ({ value: g._id, label: g.title }));
-  const productOptions = products.filter((p) => p.status !== 'killed' || p._id === productId).map((p) => ({ value: p._id, label: p.name }));
   return (
     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-      <FormField form={form} name="goalId" label="Goal" as="select" placeholder="No goal" options={goalOptions} className="sm:col-span-2" />
+      <FormField
+        form={form}
+        name="goalId"
+        label="Goal"
+        as="select"
+        placeholder="No goal"
+        options={goalOptions(goals, goalId)}
+        className="sm:col-span-2"
+      />
       <FormField
         form={form}
         name="productId"
         label="Product"
         as="select"
         placeholder="No product"
-        options={productOptions}
+        options={productOptions(products, productId)}
         onChange={(e) => form.setValues((v) => ({ ...v, productId: e.target.value, experimentId: '' }))}
       />
       <FormField

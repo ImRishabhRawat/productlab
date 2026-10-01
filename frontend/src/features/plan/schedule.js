@@ -1,7 +1,7 @@
 import { BLOCK_CATEGORIES, PRODUCTIVITY_LABELS, WEEKDAYS } from '@product-lab/shared/constants';
 import { blockSpan, minutesToTime } from '@product-lab/shared/dates';
 import { BLOCK_COLORS } from '../../components/charts/palette.js';
-import { fmtDuration } from '../../lib/format.js';
+import { choices, fmtDuration } from '../../lib/format.js';
 
 const WEEK = 7 * 1440;
 
@@ -10,12 +10,14 @@ export const DAY_PRESETS = [
   { label: 'Weekdays', days: [1, 2, 3, 4, 5] },
   { label: 'Weekends', days: [6, 0] },
 ];
+export const CATEGORY_OPTIONS = choices(BLOCK_CATEGORIES, PRODUCTIVITY_LABELS.blockCategory);
 
 export const dayLabel = (day) => PRODUCTIVITY_LABELS.weekday[day];
 export const categoryLabel = (category) => PRODUCTIVITY_LABELS.blockCategory[category] ?? category;
 export const blockColor = (category) => BLOCK_COLORS[category] ?? BLOCK_COLORS.other;
 export const sortDays = (days) => WEEKDAYS.filter((d) => days.includes(d));
 export const clockLabel = (minutes) => `${minutesToTime(minutes)}${minutes >= 1440 ? ' +1' : ''}`;
+export const weeklyMinutes = (blocks) => blocks.filter((b) => b.enabled).reduce((sum, b) => sum + blockSpan(b).minutes * b.days.length, 0);
 
 export function daysLabel(days) {
   const sorted = sortDays(days);

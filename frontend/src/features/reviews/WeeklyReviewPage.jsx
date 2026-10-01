@@ -1,7 +1,6 @@
 import { Check, ChevronLeft, ChevronRight, Timer } from 'lucide-react';
 import { Link } from 'react-router';
-import { PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
-import { addDays, bucketStart, daysBetween, isISODate, weekdayOf } from '@product-lab/shared/dates';
+import { addDays, bucketStart, daysBetween, isISODate } from '@product-lab/shared/dates';
 import { pctChange } from '@product-lab/shared/metrics';
 import { weeklyReviewSchema } from '@product-lab/shared/schemas';
 import { BarList } from '../../components/charts/BarList.jsx';
@@ -31,23 +30,22 @@ import {
   blockColumns,
   blockSeries,
   countColumn,
+  dateLabel,
   dayColumn,
+  dayInitial,
+  doneLabel,
   focusColumn,
   focusProductItems,
   focusProductTable,
   hasProductivity,
   hoursText,
   sumOf,
+  weekdayName,
   yesNo,
 } from './ReviewParts.jsx';
 
 const KPIS = ['revenue', 'spend', 'purchases', 'contribution', 'cac', 'roas'];
 const NOTES = ['wins', 'lessons', 'nextFocus'];
-
-const weekday = (date) => PRODUCTIVITY_LABELS.weekday[weekdayOf(date)];
-const initial = (date) => weekday(date).slice(0, 1);
-const dayLabel = (date) => fmtDate(date, { weekday: true });
-const doneText = (v) => (v ? 'done' : DASH);
 
 function WeekNavigator({ weekStart, thisWeek, onChange }) {
   const current = weekStart === thisWeek;
@@ -76,17 +74,17 @@ function HabitRows({ habits, dates, today }) {
           <DayStrip
             days={dates.map((date) => ({ date, value: h.dates.includes(date) ? 1 : 0 }))}
             today={today}
-            format={doneText}
-            label={`${h.name}: ${h.done} of ${h.targetPerWeek} this week`}
+            format={doneLabel}
+            label={`${h.name}: ${h.done} of ${h.target} this week`}
           />
           <span className="flex w-14 items-center justify-end gap-1 text-[13px] font-medium text-ink tabular-nums">
-            {h.done >= h.targetPerWeek && (
+            {h.done >= h.target && (
               <>
                 <Check className="size-3.5 text-positive" aria-hidden />
                 <span className="sr-only">Target met,</span>
               </>
             )}
-            {h.done}/{h.targetPerWeek}
+            {h.done}/{h.target}
           </span>
         </li>
       ))}
@@ -114,7 +112,7 @@ function ExperimentsDone({ items, loading }) {
                   <span className="block truncate text-[13px] font-medium text-ink">{x.name}</span>
                   <span className="block truncate text-xs text-muted">{x.productName}</span>
                 </span>
-                <span className="shrink-0 text-xs text-muted">{dayLabel(x.endDate)}</span>
+                <span className="shrink-0 text-xs text-muted">{dateLabel(x.endDate)}</span>
               </Link>
             </li>
           ))}
@@ -212,7 +210,7 @@ export default function WeeklyReviewPage() {
   const outcomesDone = total('outcomeDone');
   const scheduled = total('blocksScheduled');
   const blocksDone = total('blocksCompleted');
-  const habits = data?.habits ?? [];
+  const habits = (data?.habits ?? []).map((h) => ({ ...h, target: data.habitTargets?.[h._id] ?? h.targetPerWeek }));
   const focusByProduct = data?.focusByProduct ?? [];
 
   const business = data?.business;
@@ -253,7 +251,7 @@ export default function WeeklyReviewPage() {
                   }
                   table={{ rowKey: 'key', rows: days, columns: [dayColumn, focusColumn, countColumn('sessions', 'Sessions')] }}
                 >
-                  <ColumnChart data={days} series={FOCUS_SERIES} xFormatter={initial} tooltipLabel={dayLabel} />
+                  <ColumnChart data={days} series={FOCUS_SERIES} xFormatter={dayInitial} tooltipLabel={dateLabel} />
                 </ChartCard>
                 <ChartCard
                   title="#1 outcomes"
@@ -275,7 +273,7 @@ export default function WeeklyReviewPage() {
                       days={past.map((p) => ({ date: p.key, value: p.outcomeDone }))}
                       cell={40}
                       today={today}
-                      format={doneText}
+                      format={doneLabel}
                       label={`#1 outcome done on ${plural(outcomesDone, 'day')}`}
                     />
                     <p className="text-center text-[13px] text-muted">
@@ -298,7 +296,7 @@ export default function WeeklyReviewPage() {
                   }
                   table={{ rowKey: 'key', rows: days, columns: [dayColumn, ...blockColumns(days)] }}
                 >
-                  <ColumnChart data={days} series={blockSeries(days)} stacked xFormatter={initial} tooltipLabel={dayLabel} />
+                  <ColumnChart data={days} series={blockSeries(days)} stacked xFormatter={dayInitial} tooltipLabel={dateLabel} />
                 </ChartCard>
               </div>
 
@@ -320,8 +318,8 @@ export default function WeeklyReviewPage() {
                     rows: habits,
                     columns: [
                       { key: 'name', header: 'Habit' },
-                      { key: 'dates', header: 'Days', format: (v) => (v.length ? v.map(weekday).join(', ') : DASH), sortable: false },
-                      { key: 'done', header: 'Done', align: 'right', format: (v, h) => `${v}/${h.targetPerWeek}` },
+                      { key: 'dates', header: 'Days', format: (v) => (v.length ? v.map(weekdayName).join(', ') : DASH), sortable: false },
+                      { key: 'done', header: 'Done', align: 'right', format: (v, h) => `${v}/${h.target}` },
                     ],
                   }}
                 >
@@ -382,8 +380,8 @@ export default function WeeklyReviewPage() {
                 <ColumnChart
                   data={days}
                   format="currency"
-                  xFormatter={initial}
-                  tooltipLabel={dayLabel}
+                  xFormatter={dayInitial}
+                  tooltipLabel={dateLabel}
                   series={[
                     { key: 'revenue', label: 'Revenue', color: METRIC_COLORS.revenue },
                     { key: 'spend', label: 'Ad spend', color: METRIC_COLORS.spend },

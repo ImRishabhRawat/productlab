@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { CircleCheck, Play, Timer } from 'lucide-react';
-import { BLOCK_CATEGORIES, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
+import { FOCUS_MAX_MINUTES } from '@product-lab/shared/constants';
 import { focusStartSchema } from '@product-lab/shared/schemas';
 import { ProgressRing } from '../../components/charts/ProgressRing.jsx';
 import { METRIC_COLORS } from '../../components/charts/palette.js';
@@ -11,15 +11,15 @@ import { FormField } from '../../components/ui/Field.jsx';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { api } from '../../lib/api.js';
-import { choices, fmtDuration } from '../../lib/format.js';
+import { fmtDuration } from '../../lib/format.js';
 import { numberOrUndefined, useForm } from '../../lib/form.js';
 import { useMutate } from '../../lib/queries.js';
 import { useNow } from '../../lib/useNow.js';
+import { CATEGORY_OPTIONS, categoryLabel } from '../plan/schedule.js';
 import { RefFields, refBody, refValues, useRefs } from './RefFields.jsx';
 import { TODAY_KEY } from './useTodaySummary.js';
 
 const PRESETS = [25, 50, 90];
-const CATEGORY_OPTIONS = choices(BLOCK_CATEGORIES, PRODUCTIVITY_LABELS.blockCategory);
 
 const clockText = (seconds) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
@@ -96,10 +96,10 @@ function StartFocusDialog({ onClose, defaults }) {
               type="number"
               inputMode="numeric"
               min="5"
-              max="240"
+              max={FOCUS_MAX_MINUTES}
               step="1"
               suffix="min"
-              aria-label="Minutes (5 to 240)"
+              aria-label={`Minutes (5 to ${FOCUS_MAX_MINUTES})`}
               className="[&_input]:[appearance:textfield] [&_input::-webkit-inner-spin-button]:appearance-none"
             />
           </div>
@@ -136,7 +136,7 @@ function RunningFocus({ session, onFinish, pending }) {
         <div className="min-w-0 flex-1">
           {up && <p className="text-base font-semibold text-ink">Time&apos;s up</p>}
           <p className="truncate text-[15px] font-medium text-ink">{session.label || 'Focus session'}</p>
-          <p className="truncate text-[13px] text-muted">{context || PRODUCTIVITY_LABELS.blockCategory[session.category]}</p>
+          <p className="truncate text-[13px] text-muted">{context || categoryLabel(session.category)}</p>
         </div>
       </div>
       <div className="mt-4 flex gap-2">

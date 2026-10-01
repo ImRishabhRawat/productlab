@@ -1,14 +1,13 @@
 import { Timer } from 'lucide-react';
-import { PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
-import { addDays, weekdayOf } from '@product-lab/shared/dates';
+import { addDays } from '@product-lab/shared/dates';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { ColumnChart } from '../../components/charts/ColumnChart.jsx';
 import { METRIC_COLORS } from '../../components/charts/palette.js';
 import { Button } from '../../components/ui/Button.jsx';
-import { fmtCurrency, fmtDate, fmtDuration } from '../../lib/format.js';
+import { fmtCurrency, fmtDuration } from '../../lib/format.js';
 import { moneyColumn } from '../../lib/metricDisplay.js';
 import { useGet } from '../../lib/queries.js';
-import { CORRELATION, FOCUS_SERIES, dayColumn, focusColumn, sumOf } from '../reviews/ReviewParts.jsx';
+import { CORRELATION, FOCUS_SERIES, dateLabel, dayColumn, dayInitial, focusColumn, recordedOnly, sumOf } from '../reviews/ReviewParts.jsx';
 import { LIVE } from './useTodaySummary.js';
 
 const REVENUE_SERIES = [{ key: 'revenue', label: 'Revenue', color: METRIC_COLORS.revenue }];
@@ -16,12 +15,10 @@ const CHARTS = [
   { key: 'focusMinutes', label: 'Focus', format: 'hours', series: FOCUS_SERIES, total: fmtDuration, empty: 'No focus sessions logged' },
   { key: 'revenue', label: 'Revenue', format: 'currency', series: REVENUE_SERIES, total: fmtCurrency, empty: 'No revenue recorded' },
 ];
-const initial = (key) => PRODUCTIVITY_LABELS.weekday[weekdayOf(key)].charAt(0);
-const dayLabel = (key) => fmtDate(key, { weekday: true });
 
 export function WeekChart({ date, onStartFocus }) {
   const query = useGet('/productivity/series', { from: addDays(date, -6), to: date, granularity: 'day' }, LIVE);
-  const points = query.data?.points ?? [];
+  const points = recordedOnly(query.data?.points ?? [], date);
   const totals = Object.fromEntries(CHARTS.map((c) => [c.key, sumOf(points, c.key)]));
 
   return (
@@ -52,7 +49,14 @@ export function WeekChart({ date, onStartFocus }) {
             </p>
             {totals[c.key] ? (
               <div className="h-24 sm:h-28">
-                <ColumnChart data={points} format={c.format} series={c.series} xFormatter={initial} tooltipLabel={dayLabel} minTickGap={4} />
+                <ColumnChart
+                  data={points}
+                  format={c.format}
+                  series={c.series}
+                  xFormatter={dayInitial}
+                  tooltipLabel={dateLabel}
+                  minTickGap={4}
+                />
               </div>
             ) : (
               <p className="rounded-md bg-tint px-3 py-2 text-xs text-muted">{c.empty}</p>

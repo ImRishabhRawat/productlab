@@ -1,5 +1,13 @@
 import { useId } from 'react';
-import { GOAL_CATEGORIES, GOAL_LEVELS, GOAL_PRODUCT_TRACKING, GOAL_STATUSES, GOAL_TRACKING, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
+import {
+  GOAL_CATEGORIES,
+  GOAL_LEVELS,
+  GOAL_MONEY_TRACKING,
+  GOAL_PRODUCT_TRACKING,
+  GOAL_STATUSES,
+  GOAL_TRACKING,
+  PRODUCTIVITY_LABELS,
+} from '@product-lab/shared/constants';
 import { addDays, addMonths } from '@product-lab/shared/dates';
 import { goalSchema } from '@product-lab/shared/schemas';
 import { StatusBadge } from '../../components/ui/Badge.jsx';
@@ -14,19 +22,11 @@ import { choices, currencySymbol } from '../../lib/format.js';
 import { numberOrNull, str, useForm } from '../../lib/form.js';
 import { useList, useMutate } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
-import { MONEY_TRACKING, TRACKING_TITLES } from './GoalParts.jsx';
 
-const { goalLevel, goalCategory, goalStatus } = PRODUCTIVITY_LABELS;
+const { goalLevel, goalCategory, goalStatus, goalTracking, goalTrackingHint } = PRODUCTIVITY_LABELS;
 const LEVEL_OPTIONS = choices(GOAL_LEVELS, goalLevel);
 const CATEGORY_OPTIONS = choices(GOAL_CATEGORIES, goalCategory);
 const STATUS_OPTIONS = choices(GOAL_STATUSES, goalStatus);
-const HINTS = {
-  manual: 'You enter the current value',
-  revenue: 'Recorded revenue of linked products',
-  contribution: 'Revenue after ad spend and costs',
-  purchases: 'Purchases of linked products',
-  focus_hours: 'Focus sessions logged on this goal',
-};
 const FIXED_UNITS = { purchases: 'purchases', focus_hours: 'hours' };
 const UNIT_SUGGESTIONS = ['kg', 'km', 'books', 'hours', 'sessions', 'courses'];
 
@@ -73,8 +73,8 @@ function TrackingPicker({ value, onChange }) {
                 selected ? 'border-ink bg-canvas ring-1 ring-ink' : 'border-hairline bg-canvas hover:bg-tint/60'
               }`}
             >
-              <span className="text-[13px] font-medium text-ink">{TRACKING_TITLES[t]}</span>
-              <span className="text-[11px] leading-snug text-muted">{HINTS[t]}</span>
+              <span className="text-[13px] font-medium text-ink">{goalTracking[t]}</span>
+              <span className="text-[11px] leading-snug text-muted">{goalTrackingHint[t]}</span>
             </button>
           );
         })}
@@ -143,7 +143,7 @@ function GoalDialog({ onClose, goal, onSaved }) {
   const save = useMutate((body) => (goal ? api(`/goals/${goal._id}`, { method: 'PATCH', body }) : api('/goals', { method: 'POST', body })));
   const v = form.values;
   const manual = v.tracking === 'manual';
-  const money = MONEY_TRACKING.includes(v.tracking) || (manual && v.unit.trim() === currency);
+  const money = GOAL_MONEY_TRACKING.includes(v.tracking) || (manual && v.unit.trim() === currency);
   const numeric = { type: 'number', step: 'any', inputMode: 'decimal', prefix: money ? currencySymbol() : undefined };
 
   const setLevel = (level) => form.setValues((x) => ({ ...x, level, ...(!goal && periodFor(level, today)) }));
@@ -161,7 +161,7 @@ function GoalDialog({ onClose, goal, onSaved }) {
       tracking: v.tracking,
       targetValue: numberOrNull(v.targetValue),
       ...(manual && { currentValue: numberOrNull(v.currentValue) }),
-      unit: MONEY_TRACKING.includes(v.tracking) ? currency : (FIXED_UNITS[v.tracking] ?? v.unit),
+      unit: GOAL_MONEY_TRACKING.includes(v.tracking) ? currency : (FIXED_UNITS[v.tracking] ?? v.unit),
       startDate: v.startDate || null,
       targetDate: v.targetDate || null,
       status: v.status,

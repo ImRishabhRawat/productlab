@@ -1,29 +1,30 @@
 import { useState } from 'react';
 import { CalendarClock, FlaskConical, Timer } from 'lucide-react';
 import { Link } from 'react-router';
-import { LABELS, METRICS, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
-import { autoGranularity, blockSpan, bucketRange, bucketStart, isoDateIn } from '@product-lab/shared/dates';
+import { LABELS, METRICS } from '@product-lab/shared/constants';
 import { deriveMetrics, round, sumTotals } from '@product-lab/shared/metrics';
 import { BarList } from '../../components/charts/BarList.jsx';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { ColumnChart } from '../../components/charts/ColumnChart.jsx';
 import { Meter } from '../../components/charts/Meter.jsx';
-import { BLOCK_COLORS, METRIC_COLORS } from '../../components/charts/palette.js';
+import { METRIC_COLORS } from '../../components/charts/palette.js';
 import { StatusBadge } from '../../components/ui/Badge.jsx';
 import { Button, ButtonLink } from '../../components/ui/Button.jsx';
 import { Card, CardHeader } from '../../components/ui/Card.jsx';
 import { EmptyState, ErrorState, Skeleton } from '../../components/ui/States.jsx';
-import { DASH, fmtDate, fmtDuration, fmtMetric, fmtNumber, plural } from '../../lib/format.js';
+import { DASH, fmtDate, fmtDuration, fmtMetric, fmtNumber, formatValue, plural } from '../../lib/format.js';
 import { metricColumn, periodColumn } from '../../lib/metricDisplay.js';
-import { useSettings } from '../../lib/session.js';
 import { EvidenceGrid } from '../decisions/DecisionModal.jsx';
 import { experimentDates } from '../experiments/ExperimentParts.jsx';
-import { daysLabel } from '../plan/schedule.js';
+import { BlockSummaryList } from '../plan/PlanParts.jsx';
+import { weeklyMinutes } from '../plan/schedule.js';
+import { sumOf } from '../reviews/ReviewParts.jsx';
+import { SessionList } from './GoalParts.jsx';
 
 export const RESULT_METRICS = ['revenue', 'purchases', 'contribution'];
-const { blockCategory: BLOCK_LABELS } = PRODUCTIVITY_LABELS;
 const EXPERIMENT_ORDER = { running: 0, planned: 1, completed: 2, stopped: 3 };
 const EXPERIMENT_ROWS = 5;
+const SESSIONS = 5;
 
 export function ProductResults({ goal, query, metric }) {
   const totals = new Map((query.data?.items ?? []).map((p) => [p._id, p]));
@@ -162,30 +163,15 @@ export function ExperimentResults({ goal, query, metric }) {
   );
 }
 
-function focusSeries(sessions, period, timezone) {
-  const granularity = autoGranularity(period);
-  const buckets = new Map(bucketRange(period.from, period.to, granularity).map((k) => [k, 0]));
-  let count = 0;
-  for (const s of sessions) {
-    const date = isoDateIn(s.startedAt, timezone);
-    const key = bucketStart(date, granularity);
-    if (date < period.from || date > period.to || !buckets.has(key)) continue;
-    count += 1;
-    buckets.set(key, buckets.get(key) + (s.minutes ?? 0));
-  }
-  const max = Math.max(0, ...buckets.values());
-  const unit = max < 60 ? 'minutes' : 'hours';
-  const points = [...buckets].map(([key, minutes]) => ({ key, value: unit === 'hours' ? round(minutes / 60, 2) : minutes }));
-  return { granularity, count, unit, points, recorded: max > 0 };
-}
-
-export function FocusCard({ goal, period, query }) {
-  const { timezone } = useSettings().data;
-  const sessions = (query.data?.items ?? []).filter((s) => s.status !== 'cancelled');
+export function FocusCard({ goal, period, series, sessions }) {
   const started = period.from <= period.to;
-  const { granularity, count, unit, points, recorded } = started
-    ? focusSeries(sessions, period, timezone)
-    : { granularity: 'day', count: 0, unit: 'hours', points: [], recorded: false };
+  const points = (started && series.data?.points) || [];
+  const granularity = series.data?.granularity ?? 'day';
+  const max = Math.max(0, ...points.map((p) => p.focusMinutes));
+  const unit = max < 60 ? 'minutes' : 'hours';
+  const rows = points.map((p) => ({ key: p.key, value: unit === 'hours' ? p.focusHours : round(p.focusMinutes, 0) }));
+  const count = sumOf(points, 'sessions');
+  const recent = (sessions.data?.items ?? []).filter((s) => s.status !== 'cancelled');
   const start = (
     <ButtonLink to="/today" size="sm" icon={Timer}>
       Start a focus session
@@ -195,29 +181,29 @@ export function FocusCard({ goal, period, query }) {
     <ChartCard
       title="Focus on this goal"
       subtitle={
-        sessions.length
+        recent.length
           ? `${unit === 'hours' ? 'Hours' : 'Minutes'} per ${granularity} · ${plural(count, 'session')} since ${fmtDate(period.from, { year: true })}`
           : 'Sessions logged against it'
       }
-      value={sessions.length ? `${fmtNumber(goal.focusHours, { digits: 1 })} h` : null}
+      value={recent.length ? formatValue('hours', goal.focusHours) : null}
       height={null}
-      loading={query.isPending}
-      fetching={query.isFetching}
-      error={query.error}
-      onRetry={query.refetch}
-      empty={!sessions.length}
+      loading={sessions.isPending || (started && series.isPending)}
+      fetching={sessions.isFetching || series.isFetching}
+      error={sessions.error ?? series.error}
+      onRetry={() => [sessions, series].forEach((q) => q.refetch())}
+      empty={!recent.length}
       emptyMessage="No focus sessions yet."
       emptyAction={start}
       table={{
         rowKey: 'key',
-        rows: points,
+        rows,
         columns: [periodColumn(granularity), { key: 'value', header: `Focus ${unit}`, align: 'right', format: (v) => fmtNumber(v, { digits: 2 }) }],
       }}
     >
-      {recorded && (
+      {max > 0 && (
         <div className="h-40">
           <ColumnChart
-            data={points}
+            data={rows}
             granularity={granularity}
             series={[
               { key: 'value', label: `Focus ${unit}`, color: METRIC_COLORS.focus, format: (v) => fmtDuration(unit === 'hours' ? v * 60 : v) },
@@ -225,26 +211,14 @@ export function FocusCard({ goal, period, query }) {
           />
         </div>
       )}
-      <ul className={`divide-y divide-hairline-soft ${recorded ? 'mt-4' : ''}`}>
-        {sessions.slice(0, 5).map((s) => (
-          <li key={s._id} className="flex items-center justify-between gap-3 py-2">
-            <div className="min-w-0">
-              <p className="truncate text-[13px] text-ink">{s.label || BLOCK_LABELS[s.category]}</p>
-              <p className="truncate text-xs text-muted">
-                {[fmtDate(s.startedAt, { weekday: true }), s.productName, s.experimentName].filter(Boolean).join(' · ')}
-              </p>
-            </div>
-            <span className="shrink-0 text-[13px] font-medium text-ink tabular-nums">{s.status === 'running' ? 'Running' : fmtDuration(s.minutes)}</span>
-          </li>
-        ))}
-      </ul>
+      <SessionList sessions={recent.slice(0, SESSIONS)} meta={(s) => [s.productName, s.experimentName]} className={max > 0 ? 'mt-4' : ''} />
     </ChartCard>
   );
 }
 
 export function BlocksCard({ goal, query }) {
   const blocks = (query.data?.items ?? []).filter((b) => String(b.goalId) === goal._id);
-  const weekly = blocks.filter((b) => b.enabled).reduce((sum, b) => sum + blockSpan(b).minutes * b.days.length, 0);
+  const weekly = weeklyMinutes(blocks);
   return (
     <Card className="flex min-w-0 flex-col p-4 sm:p-5">
       <CardHeader
@@ -264,23 +238,7 @@ export function BlocksCard({ goal, query }) {
         ) : !blocks.length ? (
           <EmptyState compact icon={CalendarClock} title="No time blocks linked." description="Link a block to this goal on the Plan page." />
         ) : (
-          <ul className="divide-y divide-hairline-soft">
-            {blocks.map((b) => (
-              <li key={b._id} className={`flex items-center gap-3 py-2.5 ${b.enabled ? '' : 'opacity-60'}`}>
-                <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: BLOCK_COLORS[b.category] }} aria-hidden />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[13px] font-medium text-ink">{b.name}</p>
-                  <p className="truncate text-xs text-muted">
-                    {BLOCK_LABELS[b.category]} · {daysLabel(b.days)}
-                    {!b.enabled && ' · Off'}
-                  </p>
-                </div>
-                <span className="shrink-0 text-[13px] text-body tabular-nums">
-                  {b.start}–{b.end}
-                </span>
-              </li>
-            ))}
-          </ul>
+          <BlockSummaryList blocks={blocks} />
         )}
       </div>
     </Card>

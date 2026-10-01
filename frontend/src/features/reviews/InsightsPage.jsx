@@ -1,5 +1,4 @@
 import { ChevronDown, ChevronUp, Timer } from 'lucide-react';
-import { PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
 import { bucketStart, daysBetween } from '@product-lab/shared/dates';
 import { percent } from '@product-lab/shared/metrics';
 import { BarList } from '../../components/charts/BarList.jsx';
@@ -7,7 +6,7 @@ import { CalendarHeatmap } from '../../components/charts/CalendarHeatmap.jsx';
 import { ChartCard } from '../../components/charts/ChartCard.jsx';
 import { ColumnChart } from '../../components/charts/ColumnChart.jsx';
 import { Legend } from '../../components/charts/Legend.jsx';
-import { BLOCK_COLORS, CHART, METRIC_COLORS, SERIES, sequentialColor } from '../../components/charts/palette.js';
+import { CHART, METRIC_COLORS, SERIES, sequentialColor } from '../../components/charts/palette.js';
 import { ScatterPlot } from '../../components/charts/ScatterPlot.jsx';
 import { TrendChart } from '../../components/charts/TrendChart.jsx';
 import { Dot } from '../../components/ui/Badge.jsx';
@@ -22,6 +21,7 @@ import { moneyColumn, periodColumn, seriesTable } from '../../lib/metricDisplay.
 import { useGet } from '../../lib/queries.js';
 import { useMediaQuery } from '../../lib/useMediaQuery.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
+import { blockColor, categoryLabel } from '../plan/schedule.js';
 import {
   CORRELATION,
   FOCUS_SERIES,
@@ -50,7 +50,6 @@ const OUTCOME_LEGEND = [
   { key: 'set', label: 'Set, not done', color: sequentialColor(1, 2) },
   { key: 'none', label: 'No outcome', color: CHART.grid },
 ];
-const categoryLabel = (c) => PRODUCTIVITY_LABELS.blockCategory[c] ?? c;
 
 const queryState = (q) => ({ loading: q.isPending, fetching: q.isFetching, error: q.error, onRetry: q.refetch });
 const heatCell = (weeks) => Math.min(26, Math.max(12, Math.floor(280 / weeks) - 2));
@@ -353,7 +352,7 @@ export default function InsightsPage() {
                               label: categoryLabel(c.category),
                               value: c.hours,
                               display: hoursText(c.hours),
-                              prefix: <Dot color={BLOCK_COLORS[c.category]} />,
+                              prefix: <Dot color={blockColor(c.category)} />,
                             }))}
                           />
                         </ChartCard>

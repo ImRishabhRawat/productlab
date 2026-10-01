@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { Plus, Repeat } from 'lucide-react';
-import { PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
-import { addDays, bucketStart, weekdayOf } from '@product-lab/shared/dates';
+import { addDays, bucketStart } from '@product-lab/shared/dates';
 import { dayProgress } from '@product-lab/shared/metrics';
 import { DayStrip } from '../../components/charts/CalendarHeatmap.jsx';
 import { ButtonLink } from '../../components/ui/Button.jsx';
@@ -10,17 +9,17 @@ import { EmptyState, Skeleton } from '../../components/ui/States.jsx';
 import { SegmentedControl } from '../../components/ui/Tabs.jsx';
 import { api } from '../../lib/api.js';
 import { useGet } from '../../lib/queries.js';
+import { doneLabel, weekdayName } from '../reviews/ReviewParts.jsx';
 import { CheckToggle } from './CheckToggle.jsx';
 import { useTodayMutation } from './useTodaySummary.js';
 
-const doneLabel = (v) => (v ? 'Done' : 'Not done');
 const stripLabel = (name, week, strip) => {
-  const days = strip.filter((s) => s.value).map((s) => PRODUCTIVITY_LABELS.weekday[weekdayOf(s.date)]);
+  const days = strip.filter((s) => s.value).map((s) => weekdayName(s.date));
   return `${name}, ${week}: ${days.length ? `done ${days.join(', ')}` : 'not done yet'}`;
 };
 const check = ({ id, day, done }) => api(`/habits/${id}/completions/${day}`, { method: done ? 'PUT' : 'DELETE' });
 
-export function HabitsCard({ habits, date, progress, lateNight, className = '', cardRef }) {
+export function HabitsCard({ habits, targets, date, progress, lateNight, className = '', cardRef }) {
   const [picked, setPicked] = useState(null);
   const yesterday = addDays(date, -1);
   const day = lateNight && picked === yesterday ? yesterday : date;
@@ -99,13 +98,14 @@ export function HabitsCard({ habits, date, progress, lateNight, className = '', 
             {habits.map((h) => {
               const strip = days.map((d) => ({ date: d, value: doneOn(h, d) ? 1 : 0 }));
               const count = strip.filter((s) => s.value).length;
+              const target = targets?.[h._id] ?? h.targetPerWeek;
               const done = doneOn(h, day);
               return (
                 <li key={h._id} className="flex items-center gap-3 py-2.5">
                   {isToday || history.data ? (
                     <CheckToggle
                       done={done}
-                      onToggle={() => toggle.mutate({ id: h._id, day, done: !done, due: count - (done ? 1 : 0) < h.targetPerWeek })}
+                      onToggle={() => toggle.mutate({ id: h._id, day, done: !done, due: count - (done ? 1 : 0) < target })}
                       label={`${h.name} done ${isToday ? 'today' : 'yesterday'}`}
                     />
                   ) : (
@@ -114,8 +114,8 @@ export function HabitsCard({ habits, date, progress, lateNight, className = '', 
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline justify-between gap-2">
                       <p className="truncate text-sm font-medium text-ink">{h.name}</p>
-                      <p className={`shrink-0 text-xs tabular-nums ${count >= h.targetPerWeek ? 'font-medium text-positive' : 'text-muted'}`}>
-                        {count}/{h.targetPerWeek} {week}
+                      <p className={`shrink-0 text-xs tabular-nums ${count >= target ? 'font-medium text-positive' : 'text-muted'}`}>
+                        {count}/{target} {week}
                       </p>
                     </div>
                     <div className="mt-1.5 min-h-[18px]">

@@ -28,3 +28,25 @@ export function CategoryBadge({ category }) {
     </Badge>
   );
 }
+
+export function BlockSummaryList({ blocks }) {
+  return (
+    <ul className="divide-y divide-hairline-soft">
+      {blocks.map((b) => (
+        <li key={b._id} className={`flex items-center gap-3 py-2 ${b.enabled ? '' : 'opacity-60'}`}>
+          <span className="h-8 w-1 shrink-0 rounded-full" style={{ backgroundColor: blockColor(b.category) }} aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-[13px] font-medium text-ink">{b.name}</p>
+            <p className="truncate text-xs text-muted">
+              {categoryLabel(b.category)} · {daysLabel(b.days)}
+              {!b.enabled && ' · Off'}
+            </p>
+          </div>
+          <span className="shrink-0 text-[13px] text-body tabular-nums">
+            {b.start}–{b.end}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}

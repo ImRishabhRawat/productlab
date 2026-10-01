@@ -209,7 +209,16 @@ export default function TodayPage() {
   const progress = <ProgressCard progress={data.progress} compact={!wide} className="lg:order-first" />;
   const quickActions = <QuickActions actions={actions} />;
   const focus = <FocusCard focus={data.focus} onStart={() => setFocusOpen(true)} />;
-  const habits = <HabitsCard cardRef={habitsRef} habits={data.habits} date={data.date} progress={data.progress} lateNight={lateNight} />;
+  const habits = (
+    <HabitsCard
+      cardRef={habitsRef}
+      habits={data.habits}
+      targets={data.habitTargets}
+      date={data.date}
+      progress={data.progress}
+      lateNight={lateNight}
+    />
+  );
   const business = <BusinessSnapshot business={data.business} />;
   const week = (
     <Suspense fallback={<Skeleton className="h-80" />}>

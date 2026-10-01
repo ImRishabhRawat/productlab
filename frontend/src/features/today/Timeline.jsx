@@ -3,7 +3,8 @@ import { Circle, CircleCheck, Pencil } from 'lucide-react';
 import { ButtonLink } from '../../components/ui/Button.jsx';
 import { Card, CardHeader } from '../../components/ui/Card.jsx';
 import { fmtDuration } from '../../lib/format.js';
-import { blockColor, blockEnd, blockLabel, blockRange, canComplete, countsTowardProgress } from './useTodaySummary.js';
+import { blockColor, categoryLabel } from '../plan/schedule.js';
+import { blockEnd, blockRange, canComplete, countsToday } from './useTodaySummary.js';
 
 function NowLine({ time }) {
   return (
@@ -44,13 +45,13 @@ function Row({ block: b, time, onToggle }) {
       >
         <span
           className="absolute inset-y-2 left-1.5 w-1 rounded-full"
-          style={{ backgroundColor: blockColor(b), opacity: past ? 0.45 : 1 }}
+          style={{ backgroundColor: blockColor(b.category), opacity: past ? 0.45 : 1 }}
           aria-hidden
         />
         <div className="min-w-0 flex-1">
           <p className={`truncate text-sm ${current ? 'font-semibold text-ink' : past ? 'text-muted' : 'font-medium text-ink'}`}>{b.name}</p>
           <p className="truncate text-xs text-muted">
-            {blockLabel(b)} · {current ? `${blockRange(b)} · ${fmtDuration(b.remaining)} left` : `until ${blockEnd(b)}`}
+            {categoryLabel(b.category)} · {current ? `${blockRange(b)} · ${fmtDuration(b.remaining)} left` : `until ${blockEnd(b)}`}
           </p>
           {current && <span className="sr-only">Now, {time}</span>}
         </div>
@@ -74,7 +75,7 @@ function Row({ block: b, time, onToggle }) {
 
 export function Timeline({ blocks, time, onToggle, className = '' }) {
   if (!blocks.length) return null;
-  const work = blocks.filter(countsTowardProgress);
+  const work = blocks.filter(countsToday);
   const done = work.filter((b) => b.completed).length;
   const upcoming = blocks.findIndex((b) => b.state === 'upcoming');
   const gap = blocks.some((b) => b.state === 'current') ? -1 : upcoming === -1 ? blocks.length : upcoming;

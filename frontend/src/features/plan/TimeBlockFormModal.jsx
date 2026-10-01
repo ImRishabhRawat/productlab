@@ -1,6 +1,6 @@
 import { useId } from 'react';
 import { TriangleAlert } from 'lucide-react';
-import { BLOCK_CATEGORIES, PRODUCTIVITY_LABELS, WEEKDAYS } from '@product-lab/shared/constants';
+import { WEEKDAYS } from '@product-lab/shared/constants';
 import { TIME_RE, blockSpan } from '@product-lab/shared/dates';
 import { beforeEndError, timeBlockSchema } from '@product-lab/shared/schemas';
 import { Button } from '../../components/ui/Button.jsx';
@@ -8,13 +8,13 @@ import { Field, FormField, Switch } from '../../components/ui/Field.jsx';
 import { Modal } from '../../components/ui/Modal.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
 import { api } from '../../lib/api.js';
-import { choices, fmtDuration } from '../../lib/format.js';
+import { fmtDuration } from '../../lib/format.js';
 import { numberOrNull, str, useForm } from '../../lib/form.js';
-import { useGet, useList, useMutate } from '../../lib/queries.js';
+import { useGet, useMutate } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
-import { DAY_PRESETS, dayLabel, overlapping, remindersOff, sortDays } from './schedule.js';
+import { goalOptions, productOptions, useRefs } from '../today/RefFields.jsx';
+import { CATEGORY_OPTIONS, DAY_PRESETS, dayLabel, overlapping, remindersOff, sortDays } from './schedule.js';
 
-const CATEGORY_OPTIONS = choices(BLOCK_CATEGORIES, PRODUCTIVITY_LABELS.blockCategory);
 const DEFAULT_REMINDERS = { beforeStart: 5, atStart: true, beforeEnd: null };
 
 const minuteOptions = (values, current) =>
@@ -42,8 +42,7 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
   const timezone = useSettings().data?.timezone;
   const atStartId = useId();
   const form = useForm(() => initialValues(block, days));
-  const goals = useList('goals');
-  const products = useList('products', { sort: 'name' });
+  const refs = useRefs();
   const prefs = useGet('/notification-preferences');
   const save = useMutate((body) =>
     block ? api(`/time-blocks/${block._id}`, { method: 'PATCH', body }) : api('/time-blocks', { method: 'POST', body }),
@@ -53,12 +52,6 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
   const timed = TIME_RE.test(v.start) && TIME_RE.test(v.end) && v.start !== v.end;
   const span = timed ? blockSpan(v) : null;
   const clashes = timed && v.enabled && v.days.length ? overlapping(v, blocks.filter((b) => b.enabled && b._id !== block?._id)) : [];
-  const goalOptions = (goals.data?.items ?? [])
-    .filter((g) => g.status === 'active' || g._id === v.goalId)
-    .map((g) => ({ value: g._id, label: g.title }));
-  const productOptions = (products.data?.items ?? [])
-    .filter((p) => p.status !== 'killed' || p._id === v.productId)
-    .map((p) => ({ value: p._id, label: p.name }));
   const toggleDay = (d) => form.set('days', sortDays(v.days.includes(d) ? v.days.filter((x) => x !== d) : [...v.days, d]));
   const silenced = remindersOff(prefs.data).map((r) => r.key);
   const offHint = (key) => (v.reminders[key] && silenced.includes(key) ? 'Off in Notification settings' : undefined);
@@ -171,8 +164,8 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
             label="Goal"
             as="select"
             placeholder="No goal"
-            options={goalOptions}
-            hint={goals.error ? 'Couldn’t load goals' : undefined}
+            options={goalOptions(refs.goals, v.goalId)}
+            hint={refs.errors.goals ? 'Couldn’t load goals' : undefined}
           />
           <FormField
             form={form}
@@ -180,8 +173,8 @@ function TimeBlockDialog({ onClose, block, days, blocks = [] }) {
             label="Product"
             as="select"
             placeholder="No product"
-            options={productOptions}
-            hint={products.error ? 'Couldn’t load products' : undefined}
+            options={productOptions(refs.products, v.productId)}
+            hint={refs.errors.products ? 'Couldn’t load products' : undefined}
           />
         </div>
 

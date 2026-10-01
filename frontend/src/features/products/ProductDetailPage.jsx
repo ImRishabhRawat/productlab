@@ -107,7 +107,11 @@ function PurchaseSignal({ totals, loading, decisions, onDecide, onHistory }) {
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-medium tracking-wide text-muted uppercase">Latest decision</h3>
             {items.length > 1 && (
-              <button type="button" onClick={onHistory} className="text-xs text-muted hover:text-ink hover:underline">
+              <button
+                type="button"
+                onClick={onHistory}
+                className="relative text-xs text-muted hover:text-ink hover:underline max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-3"
+              >
                 All {items.length}
               </button>
             )}
@@ -307,7 +311,10 @@ export default function ProductDetailPage() {
             {p.idea && (
               <>
                 {' · '}
-                <Link to={`/ideas/${p.idea._id}`} className="hover:text-ink hover:underline">
+                <Link
+                  to={`/ideas/${p.idea._id}`}
+                  className="relative inline-block hover:text-ink hover:underline max-md:after:absolute max-md:after:inset-x-0 max-md:after:-inset-y-3"
+                >
                   From idea
                 </Link>
               </>

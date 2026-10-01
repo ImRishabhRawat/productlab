@@ -28,6 +28,7 @@ import { useMediaQuery } from '../../lib/useMediaQuery.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
 import { MetricEntryModal } from '../experiments/MetricEntryModal.jsx';
 import { GoalsSummary } from '../goals/GoalsSummary.jsx';
+import { recordedOnly } from '../reviews/ReviewParts.jsx';
 import { TodayStrip } from '../today/TodayStrip.jsx';
 
 const KPIS = ['revenue', 'spend', 'contribution', 'purchases', 'cac', 'conversionRate', 'aov', 'roas'];
@@ -120,8 +121,8 @@ export default function OverviewPage() {
   const lifecycle = useAnalytics('lifecycle');
   const activity = useAnalytics('activity', { limit: 10 }, { enabled: details });
 
-  const points = series.data?.points ?? [];
   const granularity = series.data?.granularity ?? range.granularity;
+  const points = recordedOnly(series.data?.points ?? [], range.today, granularity);
   const current = summary.data?.current;
   const productItems = products.data?.items ?? [];
   const activeProducts = productItems.filter((p) => p.hasData);

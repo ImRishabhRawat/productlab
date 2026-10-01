@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { ChevronDown, FlaskConical, Link2, Package, Pencil, Plus, Target, X } from 'lucide-react';
 import { Link } from 'react-router';
+import { OUTCOME_MAX_TASKS } from '@product-lab/shared/constants';
 import { dailyOutcomeSchema } from '@product-lab/shared/schemas';
 import { Button, IconButton } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
@@ -11,7 +12,6 @@ import { CheckToggle } from './CheckToggle.jsx';
 import { RefFields, refBody, refNames, refValues, useRefs } from './RefFields.jsx';
 import { useSaveOutcome } from './useTodaySummary.js';
 
-const MAX_TASKS = 10;
 const LINKS = [
   { id: 'goalId', name: 'goalTitle', path: '/goals', icon: Target },
   { id: 'productId', name: 'productName', path: '/products', icon: Package },
@@ -119,7 +119,7 @@ function Tasks({ tasks, onChange }) {
   const plain = (list) => list.map(({ title, done: d }) => ({ title, done: Boolean(d) }));
   const add = (e) => {
     e.preventDefault();
-    if (!draft.trim() || tasks.length >= MAX_TASKS) return;
+    if (!draft.trim() || tasks.length >= OUTCOME_MAX_TASKS) return;
     onChange([...plain(tasks), { title: draft.trim(), done: false }]);
     setDraft('');
   };
@@ -158,7 +158,7 @@ function Tasks({ tasks, onChange }) {
             ))}
           </ul>
         )}
-        {tasks.length < MAX_TASKS ? (
+        {tasks.length < OUTCOME_MAX_TASKS ? (
           <form onSubmit={add} className="mt-1.5 flex gap-2">
             <Input
               value={draft}
@@ -171,7 +171,7 @@ function Tasks({ tasks, onChange }) {
             <IconButton icon={Plus} label="Add task" type="submit" variant="secondary" disabled={!draft.trim()} />
           </form>
         ) : (
-          <p className="mt-1.5 text-xs text-muted">Ten tasks is the limit. Keep the focus on the #1 outcome.</p>
+          <p className="mt-1.5 text-xs text-muted">The limit is {OUTCOME_MAX_TASKS} tasks. Keep the focus on the #1 outcome.</p>
         )}
       </div>
     </div>

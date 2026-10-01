@@ -4,9 +4,10 @@ import { Button, ButtonLink } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { EmptyState } from '../../components/ui/States.jsx';
 import { fmtDuration } from '../../lib/format.js';
-import { blockColor, blockLabel, blockRange, canComplete } from './useTodaySummary.js';
+import { blockColor, categoryLabel } from '../plan/schedule.js';
+import { blockRange, canComplete } from './useTodaySummary.js';
 
-const blockMeta = (b) => `${blockLabel(b)} · ${blockRange(b)}`;
+const blockMeta = (b) => `${categoryLabel(b.category)} · ${blockRange(b)}`;
 
 export function NowCard({ blocks, current, next, time, reviewed, onToggle, onReview, className = '' }) {
   if (!blocks.length) {
@@ -30,7 +31,7 @@ export function NowCard({ blocks, current, next, time, reviewed, onToggle, onRev
   const block = current ?? next;
   return (
     <Card className={`relative overflow-hidden p-4 pl-5 sm:p-5 sm:pl-6 ${className}`}>
-      {block && <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: blockColor(block) }} aria-hidden />}
+      {block && <span className="absolute inset-y-0 left-0 w-1.5" style={{ backgroundColor: blockColor(block.category) }} aria-hidden />}
       <p className="text-xs font-semibold tracking-[0.06em] text-muted uppercase">
         {!current && next ? 'Up next' : 'Now'} <span className="font-medium tabular-nums">· {time}</span>
       </p>

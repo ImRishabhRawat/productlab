@@ -1,11 +1,12 @@
 import { CalendarClock, Sun } from 'lucide-react';
-import { bucketStart } from '@product-lab/shared/dates';
+import { bucketStart, weekdayOf } from '@product-lab/shared/dates';
 import { METRIC_COLORS, MUTED, SEQUENTIAL, SERIES } from '../../components/charts/palette.js';
 import { ButtonLink } from '../../components/ui/Button.jsx';
 import { Card } from '../../components/ui/Card.jsx';
 import { PageHeader } from '../../components/ui/PageHeader.jsx';
 import { TabLinks } from '../../components/ui/Tabs.jsx';
-import { DASH, fmtDate, fmtDuration, fmtNumber } from '../../lib/format.js';
+import { DASH, fmtDate, fmtDuration, fmtNumber, formatValue } from '../../lib/format.js';
+import { dayLabel } from '../plan/schedule.js';
 
 const TABS = [
   { to: '/reviews/weekly', label: 'Weekly review' },
@@ -19,7 +20,11 @@ const BLOCKS_MISSED = { key: 'blocksOpen', label: 'Not completed', color: MUTED 
 
 export const CORRELATION = 'Shown side by side — correlation, not cause.';
 
-export const hoursText = (hours) => fmtDuration(hours * 60);
+export const hoursText = (hours) => formatValue('hours', hours);
+export const weekdayName = (date) => dayLabel(weekdayOf(date));
+export const dayInitial = (date) => weekdayName(date).charAt(0);
+export const dateLabel = (date) => fmtDate(date, { weekday: true });
+export const doneLabel = (v) => (v ? 'Done' : 'Not done');
 export const sumOf = (points, key) => points.reduce((sum, p) => sum + (p[key] ?? 0), 0);
 export const hasProductivity = (points) => RECORDED.some((key) => sumOf(points, key) > 0);
 
@@ -44,7 +49,7 @@ export const blockSeries = (points) =>
 
 export const countColumn = (key, header) => ({ key, header, align: 'right', format: (v) => fmtNumber(v) });
 export const yesNo = (key, header) => ({ key, header, align: 'right', format: (v) => (v == null ? DASH : v ? 'Yes' : 'No') });
-export const dayColumn = { key: 'key', header: 'Day', format: (v) => fmtDate(v, { weekday: true }) };
+export const dayColumn = { key: 'key', header: 'Day', format: dateLabel };
 export const focusColumn = { key: 'focusMinutes', header: 'Focus', align: 'right', format: (v) => fmtDuration(v) };
 export const blockColumns = (points) => [
   countColumn('blocksScheduled', 'Scheduled'),

@@ -18,6 +18,7 @@ import { fmtDate } from '../../lib/format.js';
 import { useForm } from '../../lib/form.js';
 import { useGet, useList, useMutate, useRemove, useUpdate } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
+import { doneLabel } from '../reviews/ReviewParts.jsx';
 import { dayLabel } from './schedule.js';
 
 const CELL = 14;
@@ -98,7 +99,7 @@ function Consistency({ habit, from, today, done }) {
               days={days}
               cell={CELL}
               today={today}
-              format={(v) => (v ? 'Done' : 'Not done')}
+              format={doneLabel}
               label={`${habit.name}, week of ${fmtDate(start)}: ${count} of ${target}${count >= target ? ', target met' : ''}`}
             />
           </div>

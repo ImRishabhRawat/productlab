@@ -1,26 +1,26 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { CircleCheck, CirclePause, CircleX, Clock, Pencil, TriangleAlert, X } from 'lucide-react';
-import { GOAL_PRODUCT_TRACKING } from '@product-lab/shared/constants';
-import { isoDateIn } from '@product-lab/shared/dates';
+import { GOAL_MONEY_TRACKING, GOAL_PRODUCT_TRACKING, PRODUCTIVITY_LABELS } from '@product-lab/shared/constants';
 import { goalUpdateSchema } from '@product-lab/shared/schemas';
 import { Meter } from '../../components/charts/Meter.jsx';
 import { MUTED, SERIES, STATUS } from '../../components/charts/palette.js';
 import { Button, IconButton } from '../../components/ui/Button.jsx';
 import { FormField } from '../../components/ui/Field.jsx';
 import { useToast } from '../../components/ui/Toast.jsx';
-import { DASH, currencySymbol, fmtCurrency, fmtDate, fmtNumber, fmtPercent, plural } from '../../lib/format.js';
+import { DASH, currencySymbol, fmtCurrency, fmtDate, fmtDuration, fmtNumber, fmtPercent, plural } from '../../lib/format.js';
 import { numberOrNull, str, useForm } from '../../lib/form.js';
 import { useUpdate } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
+import { categoryLabel } from '../plan/schedule.js';
 
-export const MONEY_TRACKING = ['revenue', 'contribution'];
-export const TRACKING_TITLES = { manual: 'Manual', revenue: 'Revenue', contribution: 'Contribution', purchases: 'Purchases', focus_hours: 'Focus hours' };
 export const TONE_COLORS = { default: SERIES[0], good: STATUS.good, warning: STATUS.warning, muted: MUTED };
 const DONE = { active: 'Goal reactivated', achieved: 'Marked as achieved', paused: 'Goal paused', dropped: 'Goal dropped' };
 const SINGULAR = { purchases: 'purchase', hours: 'hour' };
+const { goalTracking: TRACKING } = PRODUCTIVITY_LABELS;
 
-export const isMoneyGoal = (goal, currency) => MONEY_TRACKING.includes(goal.tracking) || (Boolean(goal.unit) && goal.unit === currency);
+export const isMoneyGoal = (goal, currency) =>
+  GOAL_MONEY_TRACKING.includes(goal.tracking) || (Boolean(goal.unit) && goal.unit === currency);
 export const isReached = (goal) => goal.status === 'active' && goal.targetValue > 0 && goal.current >= goal.targetValue;
 export const unitLabel = (goal, value) => (value === 1 ? (SINGULAR[goal.unit] ?? goal.unit) : goal.unit);
 
@@ -28,11 +28,6 @@ export function fmtSpan(days) {
   if (days < 60) return plural(days, 'day');
   if (days < 730) return plural(Math.round(days / 30.44), 'month');
   return plural(Math.round(days / 365.25), 'year');
-}
-
-export function goalPeriod(goal, today, timezone) {
-  const from = goal.startDate ?? isoDateIn(goal.createdAt, timezone);
-  return { from, to: goal.targetDate && goal.targetDate < today ? goal.targetDate : today };
 }
 
 export function useGoalFormat() {
@@ -77,8 +72,8 @@ export function GoalTiming({ goal, className = '' }) {
 export function goalSource(goal) {
   const products = goal.products ?? [];
   if (GOAL_PRODUCT_TRACKING.includes(goal.tracking)) {
-    if (!products.length) return `${TRACKING_TITLES[goal.tracking]} · no linked products yet`;
-    return `${TRACKING_TITLES[goal.tracking]} from ${products.length === 1 ? products[0].name : `${products.length} products`}`;
+    if (!products.length) return `${TRACKING[goal.tracking]} · no linked products yet`;
+    return `${TRACKING[goal.tracking]} from ${products.length === 1 ? products[0].name : `${products.length} products`}`;
   }
   return goal.tracking === 'focus_hours' ? 'Focus sessions logged on this goal' : 'Updated manually';
 }
@@ -116,6 +111,26 @@ export function GoalMeter({ goal, compact = false }) {
       label={goal.current == null ? `No value yet · target ${target}` : `${fmt(goal, goal.current, { compact: short, unit: false })} of ${target}`}
       valueLabel={fmtPercent(goal.progress)}
     />
+  );
+}
+
+export function SessionList({ sessions, meta, className = '' }) {
+  return (
+    <ul className={`divide-y divide-hairline-soft ${className}`}>
+      {sessions.map((s) => (
+        <li key={s._id} className="flex items-center justify-between gap-3 py-2">
+          <div className="min-w-0">
+            <p className="truncate text-[13px] text-ink">{s.label || categoryLabel(s.category)}</p>
+            <p className="truncate text-xs text-muted">
+              {[fmtDate(s.startedAt, { weekday: true }), ...meta(s)].filter(Boolean).join(' · ')}
+            </p>
+          </div>
+          <span className="shrink-0 text-[13px] font-medium text-ink tabular-nums">
+            {s.status === 'running' ? 'Running' : fmtDuration(s.minutes)}
+          </span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
