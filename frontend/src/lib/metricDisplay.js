@@ -1,4 +1,5 @@
 import { FUNNEL_STAGES, METRICS } from '@product-lab/shared/constants';
+import { bucketStart } from '@product-lab/shared/dates';
 import { METRIC_COLORS, SERIES } from '../components/charts/palette.js';
 import { DASH, fmtBucket, fmtCurrency, fmtMetric, fmtNumber } from './format.js';
 
@@ -16,6 +17,13 @@ export const lowerIsBetter = (key) => METRICS[key].better === 'down';
 export const betterHint = (key) => (lowerIsBetter(key) ? 'Lower is better' : 'Higher is better');
 export const colorFor = (key) => METRIC_COLORS[key] ?? (lowerIsBetter(key) ? SERIES[1] : SERIES[0]);
 export const hasActivity = (t) => Boolean(t?.spend || t?.revenue || t?.impressions);
+
+const UNRECORDED = Object.fromEntries(Object.keys(METRICS).map((key) => [key, null]));
+
+export function recordedOnly(points, today, granularity = 'day') {
+  const current = bucketStart(today, granularity);
+  return points.map((p) => (p.key > current || (p.key === current && !hasActivity(p)) ? { ...p, ...UNRECORDED } : p));
+}
 export const measured = (key) => (v, x) => (x.hasData ? fmtMetric(key, v) : DASH);
 
 export function ranked(items, key) {

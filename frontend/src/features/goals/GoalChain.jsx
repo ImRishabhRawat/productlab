@@ -171,7 +171,7 @@ export function FocusCard({ goal, period, series, sessions }) {
   const unit = max < 60 ? 'minutes' : 'hours';
   const rows = points.map((p) => ({ key: p.key, value: unit === 'hours' ? p.focusHours : round(p.focusMinutes, 0) }));
   const count = sumOf(points, 'sessions');
-  const recent = (sessions.data?.items ?? []).filter((s) => s.status !== 'cancelled');
+  const recent = sessions.data?.items ?? [];
   const start = (
     <ButtonLink to="/today" size="sm" icon={Timer}>
       Start a focus session
@@ -181,7 +181,7 @@ export function FocusCard({ goal, period, series, sessions }) {
     <ChartCard
       title="Focus on this goal"
       subtitle={
-        recent.length
+        recent.length && (!started || series.data)
           ? `${unit === 'hours' ? 'Hours' : 'Minutes'} per ${granularity} · ${plural(count, 'session')} since ${fmtDate(period.from, { year: true })}`
           : 'Sessions logged against it'
       }
@@ -190,7 +190,7 @@ export function FocusCard({ goal, period, series, sessions }) {
       loading={sessions.isPending || (started && series.isPending)}
       fetching={sessions.isFetching || series.isFetching}
       error={sessions.error ?? series.error}
-      onRetry={() => [sessions, series].forEach((q) => q.refetch())}
+      onRetry={() => [sessions, series].forEach((q) => q.error && q.refetch())}
       empty={!recent.length}
       emptyMessage="No focus sessions yet."
       emptyAction={start}

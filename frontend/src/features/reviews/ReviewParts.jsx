@@ -6,6 +6,7 @@ import { Card } from '../../components/ui/Card.jsx';
 import { PageHeader } from '../../components/ui/PageHeader.jsx';
 import { TabLinks } from '../../components/ui/Tabs.jsx';
 import { DASH, fmtDate, fmtDuration, fmtNumber, formatValue } from '../../lib/format.js';
+import { recordedOnly } from '../../lib/metricDisplay.js';
 import { dayLabel } from '../plan/schedule.js';
 
 const TABS = [
@@ -13,7 +14,6 @@ const TABS = [
   { to: '/reviews/insights', label: 'Insights' },
 ];
 const RECORDED = ['focusMinutes', 'outcomeSet', 'blocksCompleted', 'habitsDone'];
-const NO_BUSINESS = { revenue: null, spend: null, purchases: null, contribution: null };
 const BLOCKS_DONE = { key: 'blocksCompleted', label: 'Completed', color: SERIES[0] };
 const BLOCKS_TODAY = { key: 'blocksToday', label: 'Open today', color: SEQUENTIAL[3] };
 const BLOCKS_MISSED = { key: 'blocksOpen', label: 'Not completed', color: MUTED };
@@ -27,11 +27,6 @@ export const dateLabel = (date) => fmtDate(date, { weekday: true });
 export const doneLabel = (v) => (v ? 'Done' : 'Not done');
 export const sumOf = (points, key) => points.reduce((sum, p) => sum + (p[key] ?? 0), 0);
 export const hasProductivity = (points) => RECORDED.some((key) => sumOf(points, key) > 0);
-
-export function recordedOnly(points, today, granularity = 'day') {
-  const current = bucketStart(today, granularity);
-  return points.map((p) => (p.key > current || (p.key === current && !p.revenue && !p.spend) ? { ...p, ...NO_BUSINESS } : p));
-}
 
 export function asOfToday(points, today, { granularity = 'day', openToday } = {}) {
   const current = bucketStart(today, granularity);

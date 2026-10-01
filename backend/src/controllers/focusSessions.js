@@ -9,7 +9,7 @@ export async function list(req, res) {
   const { from, to, status, goalId, productId, limit = 100 } = req.filters;
   const tz = await timezone();
   const filter = {};
-  if (status) filter.status = status;
+  if (status) filter.status = { $in: status.split(',') };
   if (goalId) filter.goalId = goalId;
   if (productId) filter.productId = productId;
   if (from || to) {

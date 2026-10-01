@@ -18,7 +18,7 @@ import { EmptyState, ErrorState, PageLoader, Skeleton } from '../../components/u
 import { Tabs } from '../../components/ui/Tabs.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { fmtCurrency, fmtDate, fmtMetric, fmtPercent, fmtRatio } from '../../lib/format.js';
-import { funnelTable, hasActivity, seriesTable } from '../../lib/metricDisplay.js';
+import { funnelTable, hasActivity, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
 import { useAnalytics, useItem, useList } from '../../lib/queries.js';
 import { AIInsightPanel } from '../ai/AIInsightPanel.jsx';
 import { DecisionModal, EvidenceGrid } from '../decisions/DecisionModal.jsx';
@@ -288,8 +288,8 @@ export default function ProductDetailPage() {
   const tab = TABS.some((t) => t.value === params.get('tab')) ? params.get('tab') : 'performance';
   const setTab = (value) => setParams(value === 'performance' ? {} : { tab: value }, { replace: true });
   const current = summary.data?.current;
-  const points = series.data?.points ?? [];
   const granularity = series.data?.granularity ?? range.granularity;
+  const points = recordedOnly(series.data?.points ?? [], range.today, granularity);
   const be = productBreakEven(p, current);
   const show = (name) => () => setModal(name);
   const close = () => setModal(null);

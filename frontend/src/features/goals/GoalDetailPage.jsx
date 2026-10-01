@@ -223,7 +223,7 @@ export default function GoalDetailPage() {
   const products = useAnalytics('products', results, { enabled: linked && started });
   const experiments = useAnalytics('experiments', results, { enabled: linked && started });
   const focus = useGet('/productivity/series', { ...results, goalId: id }, { enabled: started && !removing });
-  const sessions = useList('focus-sessions', { goalId: id, limit: 20 }, { enabled: Boolean(g) && !removing });
+  const sessions = useList('focus-sessions', { goalId: id, status: 'completed,running', limit: 5 }, { enabled: Boolean(g) && !removing });
   const blocks = useList('time-blocks');
   const remove = useRemove('goals');
 

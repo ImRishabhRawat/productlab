@@ -7,7 +7,8 @@ import { Button } from '../../components/ui/Button.jsx';
 import { fmtCurrency, fmtDuration } from '../../lib/format.js';
 import { moneyColumn } from '../../lib/metricDisplay.js';
 import { useGet } from '../../lib/queries.js';
-import { CORRELATION, FOCUS_SERIES, dateLabel, dayColumn, dayInitial, focusColumn, recordedOnly, sumOf } from '../reviews/ReviewParts.jsx';
+import { recordedOnly } from '../../lib/metricDisplay.js';
+import { CORRELATION, FOCUS_SERIES, dateLabel, dayColumn, dayInitial, focusColumn, sumOf } from '../reviews/ReviewParts.jsx';
 import { LIVE } from './useTodaySummary.js';
 
 const REVENUE_SERIES = [{ key: 'revenue', label: 'Revenue', color: METRIC_COLORS.revenue }];

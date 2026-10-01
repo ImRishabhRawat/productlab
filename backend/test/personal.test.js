@@ -521,6 +521,14 @@ describe('focus sessions', () => {
     });
   });
 
+  it('filters by several statuses at once', async () => {
+    const labels = async (query) => (await api.get(`/focus-sessions?${query}`)).body.items.map((s) => s.label);
+    expect(await labels('status=completed,running&from=2026-09-23&to=2026-09-23')).toEqual(['Marathon']);
+    expect((await api.get('/focus-sessions?status=running,paused')).body).toEqual({
+      error: { message: 'Invalid filters', fields: { status: 'Choose a valid option' } },
+    });
+  });
+
   it('deletes a session', async () => {
     const session = await focus({ label: 'Throwaway' }, '2026-09-25T15:00:00+05:30', 10);
     expect((await api.delete(`/focus-sessions/${session._id}`)).status).toBe(204);

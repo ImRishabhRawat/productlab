@@ -22,7 +22,7 @@ import { useToast } from '../../components/ui/Toast.jsx';
 import { api } from '../../lib/api.js';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { DASH, fmtCurrency, fmtDate, fmtMetric, fmtNumber, plural } from '../../lib/format.js';
-import { funnelTable, hasActivity, seriesTable } from '../../lib/metricDisplay.js';
+import { funnelTable, hasActivity, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
 import { useAnalytics, useItem, useList, useMutate, useUpdate } from '../../lib/queries.js';
 import { statusMeta } from '../../lib/status.js';
 import { AIInsightPanel } from '../ai/AIInsightPanel.jsx';
@@ -261,9 +261,10 @@ function ChangeCard({ current, previous, next, query }) {
 }
 
 function Results({ experiment: x, scope, summary, series, onRecord }) {
+  const { today } = useDateRange();
   const current = summary.data?.current;
-  const points = series.data?.points ?? [];
   const granularity = series.data?.granularity ?? scope.granularity ?? 'day';
+  const points = recordedOnly(series.data?.points ?? [], today, granularity);
   const breakEvenCac = breakEven({ price: x.variables?.price ?? x.product?.price, aov: current?.aov, ...x.product?.costs }).breakEvenCac;
   const showBreakEven = Boolean(current) && breakEvenCac > 0 && points.some((p) => p.cac >= breakEvenCac);
   const chartState = { loading: series.isPending, fetching: series.isFetching, error: series.error, onRetry: series.refetch };

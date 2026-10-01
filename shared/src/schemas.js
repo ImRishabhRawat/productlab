@@ -525,10 +525,12 @@ export const goalListQuery = z.object({
   level: z.enum(GOAL_LEVELS).optional(),
   category: z.enum(GOAL_CATEGORIES).optional(),
 });
+const focusStatuses = z.string().refine((v) => v.split(',').every((s) => FOCUS_STATUSES.includes(s)), 'Choose a valid option');
+
 export const focusListQuery = z.object({
   from: isoDate.optional(),
   to: isoDate.optional(),
-  status: z.enum(FOCUS_STATUSES).optional(),
+  status: focusStatuses.optional(),
   goalId: objectId.optional(),
   productId: objectId.optional(),
   limit: z.coerce.number().int().min(1).max(500).optional(),

@@ -14,7 +14,7 @@ import { FilterBar, PageHeader, Section } from '../../components/ui/PageHeader.j
 import { EmptyState, ErrorState } from '../../components/ui/States.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { fmtNumber, fmtPercent, fmtRange } from '../../lib/format.js';
-import { hasActivity } from '../../lib/metricDisplay.js';
+import { hasActivity, recordedOnly } from '../../lib/metricDisplay.js';
 import { useAnalytics, useItem, useList } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
@@ -51,8 +51,8 @@ export default function AnalyticsPage() {
   const productDetail = useItem('products', scope.productId);
 
   const current = summary.data?.current;
-  const points = series.data?.points ?? [];
   const granularity = series.data?.granularity ?? range.granularity;
+  const points = recordedOnly(series.data?.points ?? [], range.today, granularity);
   const productItems = products.data?.items ?? [];
   const experimentItems = experiments.data?.items ?? [];
   const product = productItems.find((p) => p._id === filters.productId);

@@ -26,7 +26,7 @@ function Part({ title, meta, queries, children }) {
       {queries.some((q) => q.isPending) ? (
         <Skeleton className="h-24" />
       ) : error ? (
-        <ErrorState compact error={error} onRetry={() => queries.forEach((q) => q.refetch())} />
+        <ErrorState compact error={error} onRetry={() => queries.forEach((q) => q.error && q.refetch())} />
       ) : (
         <div className={`transition-opacity duration-200 ${queries.some((q) => q.isFetching) ? 'opacity-60' : ''}`}>{children}</div>
       )}
@@ -38,14 +38,14 @@ export function ProductGoals({ productId, className = '' }) {
   const range = useDateRange();
   const goals = useList('goals');
   const focus = useGet('/productivity/series', { ...range.range, productId });
-  const sessions = useList('focus-sessions', { productId, ...range.range, limit: 20 });
+  const sessions = useList('focus-sessions', { productId, ...range.range, status: 'completed,running', limit: 3 });
   const blocks = useList('time-blocks');
 
   const linked = (goals.data?.items ?? []).filter((g) => g.productIds.includes(productId));
   const points = focus.data?.points ?? [];
   const minutes = sumOf(points, 'focusMinutes');
   const count = sumOf(points, 'sessions');
-  const recent = (sessions.data?.items ?? []).filter((s) => s.status !== 'cancelled');
+  const recent = sessions.data?.items ?? [];
   const scheduled = (blocks.data?.items ?? []).filter((b) => b.productId === productId);
   const weekly = weeklyMinutes(scheduled);
   const empty = goals.isSuccess && focus.isSuccess && blocks.isSuccess && !linked.length && !count && !scheduled.length;
