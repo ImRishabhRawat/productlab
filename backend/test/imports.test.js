@@ -7,7 +7,7 @@ import Customer from '../src/models/Customer.js';
 import Notification from '../src/models/Notification.js';
 import Order from '../src/models/Order.js';
 import PushSubscription from '../src/models/PushSubscription.js';
-import { ADMIN, MISSING_ID, anon, api, create, createExperiment, createProduct, setupApi } from './setup.js';
+import { ADMIN, MISSING_ID, NOW, anon, api, create, createCreative, createExperiment, createProduct, setupApi } from './setup.js';
 
 vi.mock('web-push', () => ({ default: { setVapidDetails: vi.fn(), sendNotification: vi.fn() } }));
 
@@ -488,6 +488,103 @@ describe('metric import', () => {
     } finally {
       await prefs({ experimentMilestone: false });
     }
+  });
+
+  it('stays silent for ad results dated after today', async () => {
+    await prefs({ experimentMilestone: true });
+    try {
+      const test = await createExperiment(meta._id, { name: 'Future test' });
+      const before = await alerts('experiment_milestone');
+      expect((await importMetrics([day('2026-09-30', { purchases: 12 })], { experimentId: test._id })).body.created).toBe(1);
+      expect(await alerts('experiment_milestone')).toEqual(before);
+    } finally {
+      await prefs({ experimentMilestone: false });
+    }
+  });
+
+  describe('days recorded at another level', () => {
+    let creative;
+    const spend = async (date) => (await api.get(`/analytics/summary?productId=${meta._id}&from=${date}&to=${date}`)).body.current.spend;
+    const clash = (row, level) => {
+      const message = `Already recorded ${level}: delete those entries or import at the same level`;
+      return { row, message, fields: { date: message } };
+    };
+
+    beforeAll(async () => {
+      creative = await createCreative(launch._id, { name: 'Hook A', campaign: 'Sales', adSet: 'Broad' });
+    });
+
+    it('refuses a day already recorded per creative', async () => {
+      await create('/metrics', { date: '2026-08-01', creativeId: creative._id, adSet: 'Broad' });
+      for (const body of [{ experimentId: launch._id }, {}]) {
+        expect((await importMetrics([day('2026-08-01')], body)).body).toEqual(metricResult({ failed: [clash(0, 'per creative')] }));
+      }
+      const otherAdSet = day('2026-08-01', { adSet: 'Lookalike' });
+      expect((await importMetrics([otherAdSet], { experimentId: launch._id })).body).toEqual(metricResult({ created: 1 }));
+      expect(await spend('2026-08-01')).toBe(100);
+    });
+
+    it('refuses a day already recorded under an experiment', async () => {
+      expect((await importMetrics([day('2026-08-02')], { experimentId: launch._id })).body).toEqual(metricResult({ created: 1 }));
+      expect((await importMetrics([day('2026-08-02')])).body).toEqual(metricResult({ failed: [clash(0, 'under an experiment')] }));
+      const retest = await createExperiment(meta._id, { name: 'Retest' });
+      expect((await importMetrics([day('2026-08-02')], { experimentId: retest._id })).body).toEqual(
+        metricResult({ failed: [clash(0, 'under another experiment')] }),
+      );
+      expect((await importMetrics([day('2026-08-02', { campaign: 'Retarget' })])).body).toEqual(metricResult({ created: 1 }));
+      expect(await spend('2026-08-02')).toBe(200);
+    });
+
+    it('refuses a day already recorded per campaign, per ad set or without a campaign', async () => {
+      expect((await importMetrics([day('2026-08-03', { adSet: undefined })])).body).toEqual(metricResult({ created: 1 }));
+      expect((await importMetrics([day('2026-08-03'), day('2026-08-03', { adSet: 'Lookalike' })])).body).toEqual(
+        metricResult({ failed: [clash(0, 'per campaign'), clash(1, 'per campaign')] }),
+      );
+      expect((await importMetrics([day('2026-08-03')], { experimentId: launch._id })).body).toEqual(
+        metricResult({ failed: [clash(0, 'without an experiment')] }),
+      );
+      const mixed = [day('2026-08-04'), day('2026-08-04', { adSet: undefined }), day('2026-08-04', { campaign: undefined, adSet: undefined })];
+      expect((await importMetrics(mixed)).body).toEqual(metricResult({ created: 1, failed: [clash(1, 'per ad set'), clash(2, 'per ad set')] }));
+      expect((await importMetrics([day('2026-08-05', { campaign: undefined, adSet: undefined })])).body.created).toBe(1);
+      expect((await importMetrics([day('2026-08-05')])).body).toEqual(metricResult({ failed: [clash(0, 'without a campaign')] }));
+      expect([await spend('2026-08-03'), await spend('2026-08-04'), await spend('2026-08-05')]).toEqual([100, 100, 100]);
+    });
+  });
+
+  it('keeps recorded values of metrics the file has no column for', async () => {
+    const recorded = day('2026-08-10', { reach: 15000, landingPageViews: 300, checkouts: 40 });
+    expect((await importMetrics([recorded])).body.created).toBe(1);
+    const newer = { date: '2026-08-10', campaign: 'Sales', adSet: 'Broad', spend: 150, impressions: 1200, clicks: 24, purchases: 2, revenue: 798 };
+    const fresh = { date: '2026-08-11', campaign: 'Sales', adSet: 'Broad', spend: 50 };
+    const columns = ['spend', 'impressions', 'clicks', 'purchases', 'revenue'];
+    expect((await importMetrics([newer, fresh], { columns })).body).toEqual(metricResult({ created: 1, updated: 1 }));
+    expect((await importMetrics([newer, fresh], { columns })).body).toEqual(metricResult({ unchanged: 2 }));
+    expect([(await stored())['2026-08-10|Sales|Broad'], (await stored())['2026-08-11|Sales|Broad']]).toEqual([
+      { ...values(newer), reach: 15000, landingPageViews: 300, checkouts: 40 },
+      values(fresh),
+    ]);
+  });
+
+  it('rejects metric columns it does not know', async () => {
+    for (const [columns, fields] of [
+      [['spend', 'likes'], { 'columns.1': 'Choose a valid option' }],
+      [[], { columns: 'Choose at least one metric' }],
+    ]) {
+      const res = await importMetrics([day('2026-08-20')], { columns });
+      expect(res.status).toBe(400);
+      expect(res.body).toEqual({ error: { message: FIX, fields } });
+    }
+    expect(await CampaignMetric.countDocuments({ date: '2026-08-20' })).toBe(0);
+  });
+
+  it('stores each day once when the same file is imported twice at the same moment', async () => {
+    const rows = many(30, (i) => day(`2026-07-${String(i + 1).padStart(2, '0')}`));
+    const results = await Promise.all([importMetrics(rows), importMetrics(rows)]);
+    expect(results.map((r) => [r.body.created, r.body.unchanged]).sort()).toEqual([
+      [0, 30],
+      [30, 0],
+    ]);
+    expect(await CampaignMetric.countDocuments({ productId: meta._id, date: /^2026-07-/ })).toBe(30);
   });
 });
 
