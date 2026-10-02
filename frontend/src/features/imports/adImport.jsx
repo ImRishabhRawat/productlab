@@ -1,17 +1,13 @@
-import { METRIC_FIELDS } from '@product-lab/shared/constants';
+import { IMPORT_MODES, LABELS, METRIC_FIELDS, METRIC_IMPORT_MAX_ROWS, METRICS } from '@product-lab/shared/constants';
 import { round } from '@product-lab/shared/metrics';
 import { FormField } from '../../components/ui/Field.jsx';
 import { SegmentedControl } from '../../components/ui/Tabs.jsx';
 import { parseDate, parseNumber } from '../../lib/csv.js';
-import { fmtDate } from '../../lib/format.js';
+import { choices, fmtDate } from '../../lib/format.js';
 import { metricColumn, moneyColumn } from '../../lib/metricDisplay.js';
 import { useList } from '../../lib/queries.js';
 
-const MONEY = ['spend', 'revenue'];
-const MODES = [
-  { value: 'replace', label: 'Replace with the file' },
-  { value: 'skip', label: 'Keep what is recorded' },
-];
+const MODES = choices(IMPORT_MODES, LABELS.importMode);
 
 const FIELDS = [
   { key: 'date', label: 'Day', required: true, synonyms: ['day', 'date', 'reportingstarts', 'startdate'] },
@@ -62,7 +58,7 @@ function build(records, { timezone, mapped }) {
         date,
         ...(v.campaign && { campaign: v.campaign }),
         ...(v.adSet && { adSet: v.adSet }),
-        ...Object.fromEntries(metrics.map((k) => [k, MONEY.includes(k) ? round(numbers[k]) : Math.round(numbers[k])])),
+        ...Object.fromEntries(metrics.map((k) => [k, METRICS[k].format === 'currency' ? round(numbers[k]) : Math.round(numbers[k])])),
       },
     });
   }
@@ -107,7 +103,7 @@ export const AD_IMPORT = {
   description: 'From a Meta Ads Manager export with a daily breakdown. Days already recorded are matched, never duplicated.',
   tip: 'In Ads Manager, choose Breakdown › By time › Day before exporting.',
   endpoint: '/metrics/import',
-  chunkSize: 2000,
+  chunkSize: METRIC_IMPORT_MAX_ROWS,
   noun: ['row', 'rows'],
   customers: false,
   fields: FIELDS,

@@ -1,4 +1,4 @@
-import { LABELS } from '@product-lab/shared/constants';
+import { LABELS, ORDER_IMPORT_MAX_ROWS } from '@product-lab/shared/constants';
 import { round } from '@product-lab/shared/metrics';
 import { StatusBadge } from '../../components/ui/Badge.jsx';
 import { FormField, Switch } from '../../components/ui/Field.jsx';
@@ -173,7 +173,7 @@ export const ORDER_IMPORT = {
   title: 'Import orders',
   description: 'From your store’s CSV export. Orders are matched by order ID, so re-importing never duplicates them.',
   endpoint: '/orders/import',
-  chunkSize: 500,
+  chunkSize: ORDER_IMPORT_MAX_ROWS,
   noun: ['order', 'orders'],
   customers: true,
   fields: FIELDS,

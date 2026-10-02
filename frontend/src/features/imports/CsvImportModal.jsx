@@ -257,6 +257,7 @@ function ImportDialog({ config, defaults, onClose }) {
 
   function startImport() {
     stopped.current = false;
+    setStopping(false);
     setProgress(0);
     setStep(3);
     run.mutate(plan);
@@ -456,7 +457,7 @@ function ImportDialog({ config, defaults, onClose }) {
         )}
       </div>
       <ConfirmDialog
-        open={stopping}
+        open={stopping && run.isPending}
         onClose={() => setStopping(false)}
         onConfirm={() => {
           stopped.current = true;

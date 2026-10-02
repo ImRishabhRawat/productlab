@@ -247,6 +247,52 @@ describe('order import', () => {
     await create('/orders', manual);
     expect(await Order.countDocuments({ externalId: { $exists: false } })).toBe(2);
   });
+
+  it('keeps the stored item split while the order total is unchanged', async () => {
+    const split = (main, bundle) => [{ ...MAIN, amount: main }, { ...BUNDLE, amount: bundle }];
+    expect((await importOrders([order('KEEP-1', { items: split(399, 99) })])).body.created).toBe(1);
+    for (const items of [split(449, 49), [{ ...MAIN, name: 'Silent Satsang 2.0', amount: 498 }]]) {
+      expect((await importOrders([order('KEEP-1', { items })])).body).toEqual(orderResult({ unchanged: 1 }));
+    }
+    expect((await byExternalId('KEEP-1')).items).toEqual(split(399, 99));
+    expect((await importOrders([order('KEEP-1', { items: split(449, 99) })])).body).toEqual(orderResult({ updated: 1 }));
+    expect(await byExternalId('KEEP-1')).toMatchObject({ amount: 548, items: split(449, 99) });
+  });
+
+  it('repairs customer stats that an interrupted import left behind', async () => {
+    const rows = many(3, (i) => order(`HEAL-${i}`));
+    await importOrders(rows);
+    await Customer.updateMany({ email: /^heal-/ }, { $set: { orderCount: 0, totalSpent: 0, productIds: [] } });
+    expect((await importOrders(rows)).body).toEqual(orderResult({ unchanged: 3 }));
+    expect(await Customer.countDocuments({ email: /^heal-/, orderCount: 1, totalSpent: 399 })).toBe(3);
+  });
+
+  it('reports an order that another import wrote at the same moment and saves the rest', async () => {
+    const save = Order.bulkSave.bind(Order);
+    const spy = vi.spyOn(Order, 'bulkSave').mockImplementationOnce(async (docs, options) => {
+      const { _id: customerId } = await customer('race-1@example.com');
+      await Order.create({ productId: satsang._id, customerId, externalId: 'RACE-1', items: [MAIN], amount: 399, date: new Date(NOW) });
+      return save(docs, options);
+    });
+    try {
+      const message = 'Order RACE-1 was imported by another import at the same time';
+      expect((await importOrders(many(3, (i) => order(`RACE-${i}`)))).body).toEqual(
+        orderResult({ created: 2, customersCreated: 3, failed: [failure(1, 'RACE-1', message)] }),
+      );
+      expect(await Customer.countDocuments({ email: /^race-/, orderCount: 1, totalSpent: 399 })).toBe(3);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+
+  it('runs overlapping imports of one product one at a time', async () => {
+    const rows = many(300, (i) => order(`LOCK-${i}`));
+    const results = await Promise.all([importOrders(rows), importOrders(rows.slice(-1))]);
+    expect(results.map((r) => r.status)).toEqual([200, 200]);
+    expect(results.flatMap((r) => r.body.failed)).toEqual([]);
+    expect(results.reduce((sum, r) => sum + r.body.created, 0)).toBe(300);
+    expect(await Customer.countDocuments({ email: /^lock-/, orderCount: 1 })).toBe(300);
+  });
 });
 
 describe('order import alerts', () => {
@@ -281,6 +327,13 @@ describe('order import alerts', () => {
     expect((await importOrders([paidLater, oldRefund])).body.updated).toBe(2);
     expect([await alerts('new_order'), await alerts('refund')]).toEqual([['New order · ₹498', 'New order · ₹399'], []]);
     await vi.waitFor(() => expect(pushed()).toEqual(['New order · ₹498', 'New order · ₹399']));
+  });
+
+  it('stays silent for orders dated after now', async () => {
+    const before = await alerts('new_order');
+    const rows = [order('AL-5', { date: '2026-09-29T08:00:00.000Z' }), order('AL-6', { date: '2026-10-09' })];
+    expect((await importOrders(rows)).body.created).toBe(2);
+    expect(await alerts('new_order')).toEqual(before);
   });
 });
 
