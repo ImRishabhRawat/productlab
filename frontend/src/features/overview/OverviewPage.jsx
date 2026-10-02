@@ -28,6 +28,7 @@ import { useMediaQuery } from '../../lib/useMediaQuery.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
 import { MetricEntryModal } from '../experiments/MetricEntryModal.jsx';
 import { GoalsSummary } from '../goals/GoalsSummary.jsx';
+import { ImportButton } from '../imports/ImportButton.jsx';
 import { TodayStrip } from '../today/TodayStrip.jsx';
 
 const KPIS = ['revenue', 'spend', 'contribution', 'purchases', 'cac', 'conversionRate', 'aov', 'roas'];
@@ -189,9 +190,12 @@ export default function OverviewPage() {
         title="Overview"
         description={`${selectedProduct ? selectedProduct.name : 'All products'} · ${fmtRange(range.range)}`}
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setRecording(true)}>
-            Record metrics
-          </Button>
+          <>
+            <ImportButton kind="ads" defaults={{ productId }} />
+            <Button variant="primary" icon={Plus} onClick={() => setRecording(true)}>
+              Record metrics
+            </Button>
+          </>
         }
       />
       {!mobile && <TodayStrip className="mb-5" />}

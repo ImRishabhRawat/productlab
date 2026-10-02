@@ -1,52 +1,15 @@
-import { addDays, isISODate, startOfDayIn } from '@product-lab/shared/dates';
-import { round } from '@product-lab/shared/metrics';
+import { addDays, startOfDayIn } from '@product-lab/shared/dates';
 import Customer from '../models/Customer.js';
 import Experiment from '../models/Experiment.js';
 import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import { orderAlerts } from '../services/alerts.js';
 import { recalcCustomers } from '../services/customers.js';
+import { alertFailed, applyOrder, assertRefs, importOrders, resolveCustomer } from '../services/orders.js';
 import { timezone } from '../services/settings.js';
-import { badRequest, idMap, notFound, searchRegex, sortSpec } from '../utils/http.js';
+import { idMap, notFound, searchRegex, sortSpec } from '../utils/http.js';
 
-const alertFailed = (err) => console.error(`Order alert failed: ${err.message}`);
 const SORTS = ['date', 'amount', 'createdAt'];
-const sumItems = (items) => round(items.reduce((s, i) => s + i.amount, 0));
-const toInstant = (value, tz) => (isISODate(value) ? startOfDayIn(value, tz) : new Date(value));
-
-async function resolveCustomer({ customerId, customer }) {
-  if (customerId) {
-    if (!(await Customer.exists({ _id: customerId }))) throw badRequest('Customer not found', { customerId: 'Customer not found' });
-    return customerId;
-  }
-  if (!customer?.email) throw badRequest('Enter a customer email', { 'customer.email': 'Enter a customer email' });
-  const doc = await Customer.findOneAndUpdate(
-    { email: customer.email },
-    { $setOnInsert: { email: customer.email, name: customer.name ?? '' } },
-    { upsert: true, returnDocument: 'after' },
-  );
-  if (customer.name && !doc.name) {
-    doc.name = customer.name;
-    await doc.save();
-  }
-  return doc._id;
-}
-
-async function assertRefs(productId, experimentId) {
-  if (!(await Product.exists({ _id: productId }))) throw badRequest('Product not found', { productId: 'Product not found' });
-  if (experimentId && !(await Experiment.exists({ _id: experimentId, productId }))) {
-    throw badRequest('Experiment not found for this product', { experimentId: 'Experiment not found for this product' });
-  }
-}
-
-function normalizeRefund(order) {
-  if (order.refundStatus === 'none') order.refundAmount = 0;
-  if (order.refundStatus === 'full') order.refundAmount = order.amount;
-  if (order.refundAmount > order.amount) throw badRequest('Refund exceeds the order amount', { refundAmount: 'Refund exceeds the order amount' });
-  if (order.refundStatus === 'partial' && !(order.refundAmount > 0)) {
-    throw badRequest('Enter the refunded amount', { refundAmount: 'Enter the refunded amount' });
-  }
-}
 
 async function withRefs(orders) {
   const [customers, products, experiments] = await Promise.all([
@@ -102,13 +65,7 @@ export async function get(req, res) {
 export async function create(req, res) {
   const { customer, customerId, ...body } = req.body;
   await assertRefs(body.productId, body.experimentId);
-  const order = new Order({
-    ...body,
-    experimentId: body.experimentId || null,
-    amount: sumItems(body.items),
-    date: toInstant(body.date, await timezone()),
-  });
-  normalizeRefund(order);
+  const order = applyOrder(new Order(), body, await timezone());
   order.customerId = await resolveCustomer({ customerId, customer });
   await order.save();
   await recalcCustomers([order.customerId]);
@@ -121,17 +78,11 @@ export async function update(req, res) {
   if (!order) throw notFound('Order');
   const previousCustomer = order.customerId;
   const previous = { paymentStatus: order.paymentStatus, refundStatus: order.refundStatus };
-  const { customer, customerId, date, items, ...body } = req.body;
+  const { customer, customerId, ...body } = req.body;
   if (body.productId || body.experimentId) {
     await assertRefs(body.productId ?? order.productId, 'experimentId' in body ? body.experimentId : order.experimentId);
   }
-  if (items) {
-    order.items = items;
-    order.amount = sumItems(items);
-  }
-  if (date) order.date = toInstant(date, await timezone());
-  order.set(body);
-  normalizeRefund(order);
+  applyOrder(order, body, await timezone());
   if (customerId || customer) order.customerId = await resolveCustomer({ customerId, customer });
   await order.save();
   await recalcCustomers([previousCustomer, order.customerId]);
@@ -144,4 +95,8 @@ export async function remove(req, res) {
   if (!order) throw notFound('Order');
   await recalcCustomers([order.customerId]);
   res.status(204).end();
+}
+
+export async function importRows(req, res) {
+  res.json(await importOrders(req.body));
 }

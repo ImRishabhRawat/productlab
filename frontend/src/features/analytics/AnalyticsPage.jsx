@@ -19,6 +19,7 @@ import { useAnalytics, useItem, useList } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
 import { MetricEntryModal } from '../experiments/MetricEntryModal.jsx';
+import { ImportButton } from '../imports/ImportButton.jsx';
 import { CreativeLeaderboard } from './CreativeLeaderboard.jsx';
 import { FinancialBreakdown } from './FinancialBreakdown.jsx';
 import { ProductComparison } from './ProductComparison.jsx';
@@ -99,9 +100,12 @@ export default function AnalyticsPage() {
         meta={product && <StatusBadge value={product.status} />}
         description={`${scopeLabel} · ${fmtRange(range.range)}`}
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setRecording(true)}>
-            Record metrics
-          </Button>
+          <>
+            <ImportButton kind="ads" defaults={{ productId: filters.productId, experimentId: filters.experimentId }} />
+            <Button variant="primary" icon={Plus} onClick={() => setRecording(true)}>
+              Record metrics
+            </Button>
+          </>
         }
       />
       <FilterBar>

@@ -23,6 +23,7 @@ import { DASH, fmtCurrency, fmtDate, fmtDateTime, fmtNumber, fmtPercent, fmtRang
 import { moneyColumn, periodColumn } from '../../lib/metricDisplay.js';
 import { useAnalytics, useList, useRemove } from '../../lib/queries.js';
 import { CustomerModal } from '../customers/CustomerModal.jsx';
+import { ImportButton } from '../imports/ImportButton.jsx';
 import { AddOnWaterfall, KindColumns, orderChartState, TakeRates } from './OrderAddOns.jsx';
 import { ItemChips, OrderAmount } from './OrderParts.jsx';
 import { OPTIONS, OrderFormModal } from './OrderFormModal.jsx';
@@ -186,9 +187,12 @@ export default function OrdersPage() {
         title="Orders"
         description={`${selectedProduct?.name ?? 'All products'} · ${fmtRange(range.range)}`}
         actions={
-          <Button variant="primary" icon={Plus} onClick={() => setEditing({})}>
-            Add order
-          </Button>
+          <>
+            <ImportButton kind="orders" defaults={{ productId: scope.productId || orderProduct?._id }} />
+            <Button variant="primary" icon={Plus} onClick={() => setEditing({})}>
+              Add order
+            </Button>
+          </>
         }
       />
       <FilterBar>

@@ -15,9 +15,12 @@ import {
   GRANULARITIES,
   IDEA_SIGNALS,
   IDEA_STATUSES,
+  IMPORT_MODES,
   LEVELS,
   MAX_SERIES_DAYS,
+  METRIC_IMPORT_MAX_ROWS,
   NOTIFICATION_CATEGORIES,
+  ORDER_IMPORT_MAX_ROWS,
   ORDER_ITEM_KINDS,
   OUTCOME_MAX_TASKS,
   PAYMENT_STATUSES,
@@ -198,7 +201,18 @@ export const metricSchema = z.object({
   revenue: money.optional(),
   notes: text(1000).optional(),
 });
-export const metricUpdateSchema = metricSchema.omit({ productId: true, experimentId: true, creativeId: true }).partial();
+export const metricImportRowSchema = metricSchema.omit({ productId: true, experimentId: true, creativeId: true });
+export const metricUpdateSchema = metricImportRowSchema.partial();
+
+const rowBatch = (max) => z.array(z.unknown()).min(1, 'Add at least one row').max(max, `Import at most ${max} rows at a time`);
+
+export const metricImportSchema = z.object({
+  productId: objectId,
+  experimentId: objectId.nullable().optional(),
+  mode: z.enum(IMPORT_MODES).default('replace'),
+  dryRun: z.boolean().optional(),
+  rows: rowBatch(METRIC_IMPORT_MAX_ROWS),
+});
 
 export const customerSchema = z.object({
   name: text(120).optional(),
@@ -213,13 +227,14 @@ const orderItemSchema = z.object({
   name: text(200).optional(),
   amount: money,
 });
+const orderItems = (item) => z.array(item).min(1, 'Add at least one item').max(20);
 
 export const orderSchema = z.object({
   productId: objectId,
   experimentId: objectId.nullable().optional(),
   customerId: objectId.optional(),
   customer: customerSchema.pick({ name: true, email: true }).optional(),
-  items: z.array(orderItemSchema).min(1, 'Add at least one item').max(20),
+  items: orderItems(orderItemSchema),
   paymentStatus: z.enum(PAYMENT_STATUSES).optional(),
   refundStatus: z.enum(REFUND_STATUSES).optional(),
   refundAmount: money.optional(),
@@ -228,6 +243,21 @@ export const orderSchema = z.object({
   notes: text(1000).optional(),
 });
 export const orderUpdateSchema = orderSchema.partial();
+
+export const orderImportRowSchema = z.object({
+  externalId: required(100, 'Order ID'),
+  date: orderSchema.shape.date,
+  ...customerSchema.pick({ email: true, name: true, phone: true }).shape,
+  items: orderItems(orderItemSchema.extend({ name: required(200, 'Item name') })),
+  paymentStatus: z.enum(PAYMENT_STATUSES),
+  ...orderSchema.pick({ refundStatus: true, refundAmount: true, campaign: true, notes: true }).shape,
+});
+
+export const orderImportSchema = z.object({
+  productId: objectId,
+  dryRun: z.boolean().optional(),
+  rows: rowBatch(ORDER_IMPORT_MAX_ROWS),
+});
 
 export const decisionSchema = z.object({
   productId: objectId,
@@ -355,6 +385,24 @@ export function fieldErrors(error) {
     if (!fields[key]) fields[key] = issue.message;
   }
   return fields;
+}
+
+export function parseRows(schema, rows) {
+  const valid = [];
+  const failed = [];
+  for (const [row, value] of rows.entries()) {
+    const result = schema.safeParse(value);
+    if (result.success) {
+      valid.push({ row, data: result.data });
+      continue;
+    }
+    const fields = fieldErrors(result.error);
+    const message = Object.entries(fields)
+      .map(([key, error]) => (key === '_' ? error : `${key}: ${error}`))
+      .join('; ');
+    failed.push({ row, message, fields });
+  }
+  return { valid, failed };
 }
 
 const clock = z.string().regex(TIME_RE, 'Use a 24-hour HH:MM time');

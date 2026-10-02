@@ -4,39 +4,8 @@ import CampaignMetric from '../models/CampaignMetric.js';
 import Experiment from '../models/Experiment.js';
 import Product from '../models/Product.js';
 import { metricAlerts } from '../services/alerts.js';
-import { badRequest, idMap, notFound } from '../utils/http.js';
-
-const alertFailed = (err) => console.error(`Metric alert failed: ${err.message}`);
-
-async function resolveRefs({ productId, experimentId, creativeId, campaign }) {
-  let fallbackCampaign = '';
-  if (creativeId) {
-    const creative = await AdCreative.findById(creativeId).lean();
-    if (!creative) throw badRequest('Creative not found', { creativeId: 'Creative not found' });
-    if (experimentId && experimentId !== String(creative.experimentId)) {
-      throw badRequest('Creative belongs to another experiment', { creativeId: 'Creative belongs to another experiment' });
-    }
-    experimentId = String(creative.experimentId);
-    fallbackCampaign = creative.campaign;
-  }
-  if (experimentId) {
-    const experiment = await Experiment.findById(experimentId).lean();
-    if (!experiment) throw badRequest('Experiment not found', { experimentId: 'Experiment not found' });
-    if (productId && productId !== String(experiment.productId)) {
-      throw badRequest('Experiment belongs to another product', { experimentId: 'Experiment belongs to another product' });
-    }
-    productId = String(experiment.productId);
-    fallbackCampaign ||= experiment.campaign;
-  }
-  if (!productId) throw badRequest('Choose a product', { productId: 'Choose a product' });
-  if (!(await Product.exists({ _id: productId }))) throw badRequest('Product not found', { productId: 'Product not found' });
-  return {
-    productId,
-    experimentId: experimentId || null,
-    creativeId: creativeId || null,
-    campaign: campaign || fallbackCampaign || '',
-  };
-}
+import { alertFailed, importMetrics, resolveRefs } from '../services/metrics.js';
+import { idMap, notFound } from '../utils/http.js';
 
 export async function list(req, res) {
   const { productId, experimentId, creativeId, campaign, from, to, limit = 100, offset = 0 } = req.filters;
@@ -92,4 +61,8 @@ export async function remove(req, res) {
   const metric = await CampaignMetric.findByIdAndDelete(req.params.id);
   if (!metric) throw notFound('Metric entry');
   res.status(204).end();
+}
+
+export async function importRows(req, res) {
+  res.json(await importMetrics(req.body));
 }

@@ -5,6 +5,7 @@ import cookieParser from 'cookie-parser';
 import express from 'express';
 import helmet from 'helmet';
 import { config } from './config.js';
+import { requireAuth } from './middleware/auth.js';
 import { errorHandler } from './middleware/errors.js';
 import { HttpError } from './utils/http.js';
 import api from './routes/index.js';
@@ -13,14 +14,17 @@ const distDir = fileURLToPath(new URL('../../frontend/dist', import.meta.url));
 const assetsDir = `${path.sep}assets${path.sep}`;
 const revalidate = new Set(['sw.js', 'manifest.webmanifest']);
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+const importJson = express.json({ limit: '5mb' });
+const signedInImportJson = (req, res, next) => requireAuth(req, res, (err) => (err ? next() : importJson(req, res, next)));
 
 export function createApp() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', config.trustProxy);
   app.use(helmet({ contentSecurityPolicy: { directives: { upgradeInsecureRequests: config.cookieSecure ? [] : null } } }));
-  app.use(express.json({ limit: '1mb' }));
   app.use(cookieParser());
+  app.use(['/api/orders/import', '/api/metrics/import'], signedInImportJson);
+  app.use(express.json({ limit: '1mb' }));
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
     const site = req.get('sec-fetch-site');

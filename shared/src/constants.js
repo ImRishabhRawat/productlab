@@ -11,6 +11,9 @@ export const AI_KINDS = ['idea', 'experiment', 'product'];
 export const IDEA_SIGNALS = ['demand', 'marketplace', 'social', 'search'];
 export const LEVELS = ['low', 'medium', 'high'];
 export const SMALL_SAMPLE_PURCHASES = 30;
+export const IMPORT_MODES = ['replace', 'skip'];
+export const ORDER_IMPORT_MAX_ROWS = 500;
+export const METRIC_IMPORT_MAX_ROWS = 2000;
 
 export const DECISION_STATUS = {
   continue: 'testing',
@@ -55,6 +58,7 @@ export const LABELS = {
   },
   level: { low: 'Low', medium: 'Medium', high: 'High' },
   aiKind: { idea: 'Idea', experiment: 'Experiment', product: 'Product' },
+  importMode: { replace: 'Replace existing rows', skip: 'Skip existing rows' },
   variable: {
     price: 'Price',
     offer: 'Offer',

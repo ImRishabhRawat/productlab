@@ -17,6 +17,7 @@ const orderSchema = new Schema(
     productId: { type: Schema.Types.ObjectId, ref: 'Product', required: true },
     experimentId: { type: Schema.Types.ObjectId, ref: 'Experiment', default: null, index: true },
     customerId: { type: Schema.Types.ObjectId, ref: 'Customer', required: true },
+    externalId: { type: String, trim: true },
     items: { type: [itemSchema], validate: (v) => v.length > 0 },
     amount: { type: Number, min: 0, required: true },
     paymentStatus: { type: String, enum: PAYMENT_STATUSES, default: 'paid' },
@@ -32,5 +33,6 @@ const orderSchema = new Schema(
 orderSchema.index({ date: -1 });
 orderSchema.index({ productId: 1, date: -1 });
 orderSchema.index({ customerId: 1, date: -1 });
+orderSchema.index({ externalId: 1 }, { unique: true, partialFilterExpression: { externalId: { $type: 'string' } } });
 
 export default mongoose.model('Order', orderSchema);
