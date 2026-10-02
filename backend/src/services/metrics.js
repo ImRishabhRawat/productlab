@@ -12,6 +12,15 @@ import { today } from './settings.js';
 
 export const alertFailed = (err) => console.error(`Metric alert failed: ${err.message}`);
 const keyOf = ({ date, campaign = '', adSet = '' }) => JSON.stringify([date, campaign, adSet]);
+const overlaps = (a, b) => !a.campaign || !b.campaign || (a.campaign === b.campaign && (!a.adSet || !b.adSet || a.adSet === b.adSet));
+
+function recordedAs(doc, experimentId) {
+  if (doc.creativeId) return 'per creative';
+  if (String(doc.experimentId ?? '') !== String(experimentId ?? '')) {
+    return doc.experimentId ? `under ${experimentId ? 'another' : 'an'} experiment` : 'without an experiment';
+  }
+  return !doc.campaign ? 'without a campaign' : doc.adSet ? 'per ad set' : 'per campaign';
+}
 
 export async function resolveRefs({ productId, experimentId, creativeId, campaign }) {
   let fallbackCampaign = '';
@@ -43,35 +52,47 @@ export async function resolveRefs({ productId, experimentId, creativeId, campaig
   };
 }
 
-export async function importMetrics({ productId, experimentId = null, mode, dryRun, rows }) {
+export async function importMetrics({ productId, experimentId = null, mode, columns = METRIC_FIELDS, dryRun, rows }) {
   await resolveRefs({ productId, experimentId });
   const { valid, failed } = parseRows(metricImportRowSchema, rows);
   const groups = new Map();
-  for (const { data } of valid) {
+  for (const { row, data } of valid) {
     const { date, campaign = '', adSet = '', notes = '' } = data;
     const key = keyOf(data);
-    if (!groups.has(key)) groups.set(key, { date, campaign, adSet, notes, totals: emptyTotals() });
+    if (!groups.has(key)) groups.set(key, { row, date, campaign, adSet, notes, totals: emptyTotals() });
     const group = groups.get(key);
     group.notes ||= notes;
     addTotals(group.totals, data);
   }
-  const dates = [...new Set([...groups.values()].map((g) => g.date))];
-  const docs = await CampaignMetric.find({ productId, experimentId, creativeId: null, date: { $in: dates } }).sort({ _id: -1 });
-  const existing = new Map(docs.map((d) => [keyOf(d), d]));
+  const recorded = new Map([...groups.values()].map((g) => [g.date, []]));
+  for (const doc of await CampaignMetric.find({ productId, date: { $in: [...recorded.keys()] } }).sort({ _id: 1 })) {
+    recorded.get(doc.date).push(doc);
+  }
+  const sameScope = (doc) => !doc.creativeId && String(doc.experimentId ?? '') === String(experimentId ?? '');
+  const besideProductRow = (doc, key) => experimentId && !doc.experimentId && !doc.creativeId && keyOf(doc) === key;
   const created = [];
   const updated = [];
   let unchanged = 0;
 
-  for (const [key, { totals, ...fields }] of groups) {
+  for (const [key, { row, totals, ...scope }] of groups) {
     const values = Object.fromEntries(METRIC_FIELDS.map((f) => [f, round(totals[f])]));
-    const doc = existing.get(key);
+    const day = recorded.get(scope.date);
+    const doc = day.find((d) => sameScope(d) && keyOf(d) === key);
     if (!doc) {
-      created.push({ doc: new CampaignMetric({ productId, experimentId, ...fields, ...values }), added: values.purchases });
+      const clash = day.find((d) => overlaps(d, scope) && !besideProductRow(d, key));
+      if (clash) {
+        const message = `Already recorded ${recordedAs(clash, experimentId)}: delete those entries or import at the same level`;
+        failed.push({ row, message, fields: { date: message } });
+        continue;
+      }
+      const fresh = new CampaignMetric({ productId, experimentId, ...scope, ...values });
+      day.push(fresh);
+      created.push({ doc: fresh, added: values.purchases });
     } else if (mode === 'skip') {
       unchanged += 1;
     } else {
       const before = doc.purchases;
-      doc.set(values);
+      doc.set(Object.fromEntries(columns.map((f) => [f, values[f]])));
       if (doc.isModified()) updated.push({ doc, added: doc.purchases - before });
       else unchanged += 1;
     }
@@ -80,11 +101,12 @@ export async function importMetrics({ productId, experimentId = null, mode, dryR
   if (!dryRun) {
     const written = [...created, ...updated];
     if (written.length) await CampaignMetric.bulkSave(written.map((w) => w.doc));
-    const since = addDays(await today(), -1);
-    const recent = written.filter((w) => w.doc.date >= since);
+    const end = await today();
+    const since = addDays(end, -1);
+    const recent = written.filter((w) => w.doc.date >= since && w.doc.date <= end);
     if (recent.length) {
       await metricAlerts({ productId, experimentId }, recent.reduce((sum, w) => sum + w.added, 0)).catch(alertFailed);
     }
   }
-  return { created: created.length, updated: updated.length, unchanged, failed };
+  return { created: created.length, updated: updated.length, unchanged, failed: failed.sort((a, b) => a.row - b.row) };
 }

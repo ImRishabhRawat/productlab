@@ -8,6 +8,7 @@ import { recalcCustomers } from '../services/customers.js';
 import { alertFailed, applyOrder, assertRefs, importOrders, resolveCustomer } from '../services/orders.js';
 import { timezone } from '../services/settings.js';
 import { idMap, notFound, searchRegex, sortSpec } from '../utils/http.js';
+import { serial } from '../utils/serial.js';
 
 const SORTS = ['date', 'amount', 'createdAt'];
 
@@ -98,5 +99,5 @@ export async function remove(req, res) {
 }
 
 export async function importRows(req, res) {
-  res.json(await importOrders(req.body));
+  res.json(await serial(req.body.productId, () => importOrders(req.body)));
 }

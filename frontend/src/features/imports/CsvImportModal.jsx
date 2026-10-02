@@ -9,7 +9,7 @@ import { FormField } from '../../components/ui/Field.jsx';
 import { ConfirmDialog, Modal } from '../../components/ui/Modal.jsx';
 import { ErrorState, Skeleton } from '../../components/ui/States.jsx';
 import { api } from '../../lib/api.js';
-import { autoMap, parseCsv } from '../../lib/csv.js';
+import { autoMap, headerCurrency, parseCsv } from '../../lib/csv.js';
 import { DASH, fmtNumber, plural, truncate } from '../../lib/format.js';
 import { useForm } from '../../lib/form.js';
 import { useList, useMutate } from '../../lib/queries.js';
@@ -152,7 +152,7 @@ function RowList({ title, rows }) {
 }
 
 function ImportDialog({ config, defaults, onClose }) {
-  const { timezone } = useSettings().data;
+  const { timezone, currency } = useSettings().data;
   const products = useList('products', { sort: 'name' });
   const form = useForm(() => ({ productId: defaults?.productId ?? '', ...config.initialOptions(defaults), map: {} }));
   const [step, setStep] = useState(0);
@@ -240,14 +240,24 @@ function ImportDialog({ config, defaults, onClose }) {
     const v = form.values;
     const errors = {};
     if (!v.productId) errors.productId = 'Choose a product';
-    for (const f of config.fields) if (f.required && !v.map[f.key]) errors[`map.${f.key}`] = 'Choose the column that holds this';
+    for (const f of config.fields) {
+      const code = f.money && v.map[f.key] && headerCurrency(table.headers[v.map[f.key]]);
+      if (f.required && !v.map[f.key]) errors[`map.${f.key}`] = 'Choose the column that holds this';
+      else if (code && code !== currency) errors[`map.${f.key}`] = `Amounts in ${code}, but Product Lab uses ${currency}`;
+    }
     if (Object.keys(errors).length) return form.serverErrors({ fields: errors });
     const mapped = new Set(config.fields.filter((f) => v.map[f.key]).map((f) => f.key));
     const records = table.rows.map((cells, i) => ({
       line: i + 2,
       values: Object.fromEntries(config.fields.map((f) => [f.key, mapped.has(f.key) ? (cells[v.map[f.key]] ?? '').trim() : ''])),
     }));
-    const built = config.build(records, { product: productItems.find((p) => p._id === v.productId), options: v, timezone, mapped });
+    const built = config.build(records, {
+      product: productItems.find((p) => p._id === v.productId),
+      options: v,
+      timezone,
+      currency,
+      mapped,
+    });
     const next = { ...built, chunks: toChunks(built.rows, config.chunkSize, config.groupKey), envelope: config.envelope(v) };
     setPlan(next);
     setStep(2);
@@ -273,6 +283,7 @@ function ImportDialog({ config, defaults, onClose }) {
 
   const totals = plan && (plan.chunks.length ? check.data : NONE);
   const changes = totals ? totals.created + totals.updated : 0;
+  const unsent = run.data?.error ? plan.rows.length - progress : 0;
   const notImported = (result) => [...(plan?.skipped ?? []), ...result.failed].sort(byLine);
   const sample = (index) =>
     table.rows
@@ -306,6 +317,13 @@ function ImportDialog({ config, defaults, onClose }) {
     </>,
     run.isPending ? (
       <Button onClick={() => setStopping(true)}>Stop import</Button>
+    ) : run.data?.error ? (
+      <>
+        <Button onClick={onClose}>Close</Button>
+        <Button variant="primary" onClick={startImport}>
+          Try again
+        </Button>
+      </>
     ) : (
       <>
         <Button onClick={restart}>Import another file</Button>
@@ -395,7 +413,7 @@ function ImportDialog({ config, defaults, onClose }) {
 
         {step === 2 && (
           <>
-            <p className="text-[13px] text-muted">
+            <p className="text-[13px] wrap-anywhere text-muted">
               {table.name} checked against what is already in Product Lab. Nothing is saved until you import.
             </p>
             <div aria-live="polite" aria-busy={check.isPending} className="space-y-5">
@@ -412,6 +430,7 @@ function ImportDialog({ config, defaults, onClose }) {
                 </p>
               )}
             </div>
+            {plan.note && <p className="text-[13px] text-muted">{plan.note}</p>}
             {totals && notImported(totals).length > 0 && <RowList title="Won’t be imported" rows={notImported(totals)} />}
             {plan.rows.length > 0 && (
               <section>
@@ -433,11 +452,11 @@ function ImportDialog({ config, defaults, onClose }) {
           <div aria-live="polite" className="space-y-5">
             {run.data ? (
               <>
-                <Summary totals={run.data} skipped={plan.skipped.length} customers={config.customers} />
+                <Summary totals={run.data} skipped={plan.skipped.length + unsent} customers={config.customers} />
                 {run.data.error && (
                   <p className="rounded-lg border border-negative/30 px-3 py-2.5 text-[13px] text-body" role="alert">
                     <span className="font-medium text-negative">Import stopped: {run.data.error.message.replace(/\.?$/, '.')}</span>{' '}
-                    {plural(plan.rows.length - progress, 'row')} not sent. Import the same file again to finish; nothing is duplicated.
+                    {plural(unsent, 'file row')} not sent. Try again to finish; nothing is duplicated.
                   </p>
                 )}
                 {notImported(run.data).length > 0 && <RowList title="Not imported" rows={notImported(run.data)} />}
@@ -448,7 +467,7 @@ function ImportDialog({ config, defaults, onClose }) {
                   value={progress}
                   max={plan.rows.length}
                   label="Importing…"
-                  valueLabel={`${fmtNumber(progress)} of ${plural(plan.rows.length, 'row')}`}
+                  valueLabel={`${fmtNumber(progress)} of ${plural(plan.rows.length, 'file row')}`}
                 />
                 <p className="mt-3 text-[13px] text-muted">Keep this window open until the import finishes.</p>
               </div>

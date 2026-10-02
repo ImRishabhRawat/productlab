@@ -1,4 +1,5 @@
 import { LABELS, ORDER_IMPORT_MAX_ROWS } from '@product-lab/shared/constants';
+import { todayIn } from '@product-lab/shared/dates';
 import { round } from '@product-lab/shared/metrics';
 import { StatusBadge } from '../../components/ui/Badge.jsx';
 import { FormField, Switch } from '../../components/ui/Field.jsx';
@@ -37,8 +38,10 @@ const FIELDS = [
     key: 'amount',
     label: 'Amount',
     required: true,
+    money: true,
     synonyms: ['amount', 'total', 'ordertotal', 'totalamount', 'amountpaid', 'grandtotal'],
   },
+  { key: 'currency', label: 'Currency', synonyms: ['currency', 'currencycode'], hint: 'Used to skip orders in another currency' },
   {
     key: 'products',
     label: 'Products',
@@ -94,10 +97,12 @@ function orderItems(amount, listed, product, kind) {
   ];
 }
 
-function build(records, { product, options, timezone }) {
+function build(records, { product, options, timezone, currency }) {
   const rows = [];
   const skipped = [];
   const seen = new Set();
+  const today = todayIn(timezone);
+  const inFuture = (date) => (date.includes('T') ? new Date(date).getTime() > Date.now() + 5 * 60_000 : date > today);
   for (const { line, values: v } of records) {
     const amount = parseNumber(v.amount);
     const status = PAYMENT[v.paymentStatus.toLowerCase()];
@@ -107,11 +112,13 @@ function build(records, { product, options, timezone }) {
       [!v.externalId, 'Missing order ID'],
       [!v.amount, 'Missing amount'],
       [amount == null, `Amount “${v.amount}” is not a number`],
+      [v.currency && v.currency.toUpperCase() !== currency, `Currency ${v.currency}, not ${currency}`],
       [options.skipTests && amount < TEST_BELOW, `Test order below ${fmtCurrency(TEST_BELOW)}`],
       [!v.paymentStatus, 'Missing payment status'],
       [!status, `Unknown payment status “${v.paymentStatus}”`],
       [!when, 'Missing date'],
       [!date, `Unrecognised date “${when}”`],
+      [date && inFuture(date), 'Date is in the future: check the day/month order'],
       [!v.email, 'Missing email'],
       [seen.has(v.externalId), 'Duplicate order ID in this file'],
     ].find(([hit]) => hit)?.[1];
@@ -162,8 +169,8 @@ function Options({ form }) {
 
 const columns = [
   { key: 'externalId', header: 'Order ID', className: 'whitespace-nowrap' },
-  { key: 'date', header: 'Date', className: 'whitespace-nowrap', format: (v) => fmtDate(v, { year: true }) },
-  { key: 'email', header: 'Customer', render: (r) => <div className="max-w-48 truncate">{r.name || r.email}</div> },
+  { key: 'date', header: 'Date', className: 'whitespace-nowrap', format: (v) => fmtDate(v) },
+  { key: 'email', header: 'Customer', render: (r) => <div className="max-w-32 truncate">{r.name || r.email}</div> },
   { key: 'items', header: 'Items', render: (r) => <ItemChips items={r.items} /> },
   { key: 'amount', header: 'Amount', align: 'right', render: (r) => fmtCurrency(round(r.items.reduce((s, i) => s + i.amount, 0))) },
   { key: 'paymentStatus', header: 'Payment', render: (r) => <StatusBadge kind="paymentStatus" value={r.paymentStatus} /> },
@@ -179,7 +186,7 @@ export const ORDER_IMPORT = {
   fields: FIELDS,
   initialOptions: () => ({ extraKind: storedKind(), skipTests: true }),
   envelope: ({ productId }) => ({ productId }),
-  groupKey: (row) => row.externalId,
+  groupKey: (row) => row.email,
   build,
   columns,
   Options,

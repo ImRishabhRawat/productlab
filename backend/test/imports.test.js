@@ -515,13 +515,13 @@ describe('metric import', () => {
     });
 
     it('refuses a day already recorded per creative', async () => {
-      await create('/metrics', { date: '2026-08-01', creativeId: creative._id, adSet: 'Broad' });
+      await create('/metrics', { date: '2026-08-01', creativeId: creative._id, adSet: 'Broad', spend: 100 });
       for (const body of [{ experimentId: launch._id }, {}]) {
         expect((await importMetrics([day('2026-08-01')], body)).body).toEqual(metricResult({ failed: [clash(0, 'per creative')] }));
       }
       const otherAdSet = day('2026-08-01', { adSet: 'Lookalike' });
       expect((await importMetrics([otherAdSet], { experimentId: launch._id })).body).toEqual(metricResult({ created: 1 }));
-      expect(await spend('2026-08-01')).toBe(100);
+      expect(await spend('2026-08-01')).toBe(200);
     });
 
     it('refuses a day already recorded under an experiment', async () => {
@@ -543,8 +543,11 @@ describe('metric import', () => {
       expect((await importMetrics([day('2026-08-03')], { experimentId: launch._id })).body).toEqual(
         metricResult({ failed: [clash(0, 'without an experiment')] }),
       );
-      const mixed = [day('2026-08-04'), day('2026-08-04', { adSet: undefined }), day('2026-08-04', { campaign: undefined, adSet: undefined })];
-      expect((await importMetrics(mixed)).body).toEqual(metricResult({ created: 1, failed: [clash(1, 'per ad set'), clash(2, 'per ad set')] }));
+      const noAdSet = { adSet: undefined };
+      const mixed = [day('2026-08-04'), day('2026-08-04', noAdSet), day('2026-08-04', { ...noAdSet, campaign: undefined })];
+      expect((await importMetrics(mixed)).body).toEqual(
+        metricResult({ created: 1, failed: [clash(1, 'per ad set'), clash(2, 'per ad set')] }),
+      );
       expect((await importMetrics([day('2026-08-05', { campaign: undefined, adSet: undefined })])).body.created).toBe(1);
       expect((await importMetrics([day('2026-08-05')])).body).toEqual(metricResult({ failed: [clash(0, 'without a campaign')] }));
       expect([await spend('2026-08-03'), await spend('2026-08-04'), await spend('2026-08-05')]).toEqual([100, 100, 100]);
@@ -554,12 +557,13 @@ describe('metric import', () => {
   it('keeps recorded values of metrics the file has no column for', async () => {
     const recorded = day('2026-08-10', { reach: 15000, landingPageViews: 300, checkouts: 40 });
     expect((await importMetrics([recorded])).body.created).toBe(1);
-    const newer = { date: '2026-08-10', campaign: 'Sales', adSet: 'Broad', spend: 150, impressions: 1200, clicks: 24, purchases: 2, revenue: 798 };
     const fresh = { date: '2026-08-11', campaign: 'Sales', adSet: 'Broad', spend: 50 };
+    const newer = { ...fresh, date: '2026-08-10', spend: 150, impressions: 1200, clicks: 24, purchases: 2, revenue: 798 };
     const columns = ['spend', 'impressions', 'clicks', 'purchases', 'revenue'];
     expect((await importMetrics([newer, fresh], { columns })).body).toEqual(metricResult({ created: 1, updated: 1 }));
     expect((await importMetrics([newer, fresh], { columns })).body).toEqual(metricResult({ unchanged: 2 }));
-    expect([(await stored())['2026-08-10|Sales|Broad'], (await stored())['2026-08-11|Sales|Broad']]).toEqual([
+    const rows = await stored();
+    expect([rows['2026-08-10|Sales|Broad'], rows['2026-08-11|Sales|Broad']]).toEqual([
       { ...values(newer), reach: 15000, landingPageViews: 300, checkouts: 40 },
       values(fresh),
     ]);

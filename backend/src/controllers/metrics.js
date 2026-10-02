@@ -6,6 +6,7 @@ import Product from '../models/Product.js';
 import { metricAlerts } from '../services/alerts.js';
 import { alertFailed, importMetrics, resolveRefs } from '../services/metrics.js';
 import { idMap, notFound } from '../utils/http.js';
+import { serial } from '../utils/serial.js';
 
 export async function list(req, res) {
   const { productId, experimentId, creativeId, campaign, from, to, limit = 100, offset = 0 } = req.filters;
@@ -64,5 +65,5 @@ export async function remove(req, res) {
 }
 
 export async function importRows(req, res) {
-  res.json(await importMetrics(req.body));
+  res.json(await serial(req.body.productId, () => importMetrics(req.body)));
 }

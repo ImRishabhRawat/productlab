@@ -18,6 +18,7 @@ import {
   IMPORT_MODES,
   LEVELS,
   MAX_SERIES_DAYS,
+  METRIC_FIELDS,
   METRIC_IMPORT_MAX_ROWS,
   NOTIFICATION_CATEGORIES,
   ORDER_IMPORT_MAX_ROWS,
@@ -210,6 +211,7 @@ export const metricImportSchema = z.object({
   productId: objectId,
   experimentId: objectId.nullable().optional(),
   mode: z.enum(IMPORT_MODES).default('replace'),
+  columns: z.array(z.enum(METRIC_FIELDS)).min(1, 'Choose at least one metric').optional(),
   dryRun: z.boolean().optional(),
   rows: rowBatch(METRIC_IMPORT_MAX_ROWS),
 });

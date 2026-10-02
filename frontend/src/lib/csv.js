@@ -42,8 +42,8 @@ export function parseNumber(value) {
 }
 
 const DATE_TIME = /^(\d{4}-\d{2}-\d{2})[T ](\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(Z|[+-]\d{2}:?\d{2})$/i;
-const YMD = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T ].*)?$/;
-const DMY = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:[T ].*)?$/;
+const YMD = /^(\d{4})[-/](\d{1,2})[-/](\d{1,2})(?:[T ]\d{1,2}:\d{2}.*)?$/;
+const DMY = /^(\d{1,2})[/.-](\d{1,2})[/.-](\d{4})(?:[T ]\d{1,2}:\d{2}.*)?$/;
 
 export function parseInstant(value) {
   const m = String(value ?? '')
@@ -65,6 +65,8 @@ export function parseDate(value, timeZone) {
   const iso = y ? `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}` : '';
   return isISODate(iso) ? iso : null;
 }
+
+export const headerCurrency = (header) => header.match(/\(([A-Z]{3})\)/)?.[1] ?? null;
 
 const headerKey = (header) =>
   header

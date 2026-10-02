@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import { X } from 'lucide-react';
 import { Button, IconButton } from './Button.jsx';
 import { useToastLayer } from './Toast.jsx';
@@ -8,6 +8,13 @@ const FIRST_FIELD = ':scope > form :is(input:not([type=hidden]), select, textare
 
 export function Modal({ open, onClose, title, description, size = 'md', onSubmit, footer, children }) {
   const ref = useRef(null);
+
+  useLayoutEffect(() => {
+    const dialog = ref.current;
+    return () => {
+      if (dialog?.open) dialog.close();
+    };
+  }, []);
   const pressed = useRef(false);
 
   useEffect(() => {
