@@ -340,7 +340,7 @@ export default function WeeklyReviewPage() {
             </>
           )}
 
-          <Section title="Business" description={`Recorded ad metrics · change ${comparisonLabel}`}>
+          <Section title="Business" description={`Sales and ad results · change ${comparisonLabel}`}>
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               {KPIS.map((key) => (
                 <KpiTile
@@ -370,7 +370,7 @@ export default function WeeklyReviewPage() {
                 height={260}
                 {...state}
                 empty={Boolean(data) && !hasActivity(current)}
-                emptyMessage="No ad metrics recorded this week."
+                emptyMessage="No sales or ad results this week."
                 table={{
                   rowKey: 'key',
                   rows: days,

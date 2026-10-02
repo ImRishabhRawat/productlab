@@ -361,7 +361,7 @@ export default function InsightsPage() {
                   </>
                 )}
 
-                <Section title="Business output" description="Recorded ad metrics and finished experiments">
+                <Section title="Business output" description="Sales, ad results and finished experiments">
                   <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
                     <ChartCard
                       className="lg:col-span-2"
@@ -370,7 +370,7 @@ export default function InsightsPage() {
                       height={260}
                       {...state}
                       empty={Boolean(data) && !total('revenue') && !total('spend')}
-                      emptyMessage="No ad metrics recorded in this period."
+                      emptyMessage="No sales or ad results in this period."
                       table={seriesTable(points, granularity, ['revenue', 'spend'])}
                     >
                       <TrendChart

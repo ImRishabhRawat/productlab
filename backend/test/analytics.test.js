@@ -756,3 +756,79 @@ describe('back-dated decisions', () => {
     ]);
   });
 });
+
+describe('sales from orders', () => {
+  let store;
+  let launch;
+  const range = 'from=2026-09-01&to=2026-09-30';
+
+  beforeAll(async () => {
+    await resetDb();
+    store = await createProduct({ name: 'Store', price: 400, costs: { paymentFeePct: 2, refundRatePct: 0, variableCostPerSale: 0 } });
+    const adsOnly = await createProduct({ name: 'Ads only', price: 1000 });
+    const ordersOnly = await createProduct({ name: 'Orders only', price: 700 });
+    launch = await createExperiment(store._id, { name: 'Store launch', campaign: 'store-launch' });
+    const order = (product, name, amount, date, extra) =>
+      create('/orders', { productId: product._id, customer: { email: `${name}@example.com`, name }, items: [{ kind: 'main', amount }], date, ...extra });
+    await order(store, 'asha', 400, '2026-09-01');
+    await order(store, 'bala', 500, '2026-09-01T20:00:00Z');
+    await order(store, 'chen', 400, '2026-09-03', { paymentStatus: 'pending' });
+    await order(store, 'dev', 400, '2026-09-04', { paymentStatus: 'failed' });
+    await order(store, 'esha', 400, '2026-09-06');
+    await order(ordersOnly, 'farah', 700, '2026-09-05');
+    const ads = { impressions: 10000, clicks: 200, landingPageViews: 150, checkouts: 10 };
+    await create('/metrics', { productId: store._id, date: '2026-09-01', spend: 300, ...ads, purchases: 9, revenue: 9000 });
+    await create('/metrics', { experimentId: launch._id, campaign: 'store-launch', date: '2026-09-02', spend: 200, ...ads, purchases: 4, revenue: 1600 });
+    await create('/metrics', { productId: adsOnly._id, date: '2026-09-02', spend: 100, purchases: 2, revenue: 2000 });
+  });
+
+  it('takes purchases and revenue from paid orders for products that have orders', async () => {
+    const { current } = await get(`/analytics/summary?productId=${store._id}&${range}`);
+    expect(current).toMatchObject({
+      spend: 500,
+      impressions: 20000,
+      clicks: 400,
+      landingPageViews: 300,
+      checkouts: 20,
+      purchases: 3,
+      revenue: 1300,
+      fees: 26,
+      contribution: 774,
+      aov: 433.33,
+      cac: 166.67,
+      roas: 2.6,
+      conversionRate: 1,
+    });
+  });
+
+  it('combines order-backed and ad-only products in the totals', async () => {
+    const { current } = await get(`/analytics/summary?${range}`);
+    expect(current).toMatchObject({ spend: 600, purchases: 6, revenue: 4000 });
+  });
+
+  it('keeps ad results for experiment and campaign views', async () => {
+    const expected = { spend: 200, purchases: 4, revenue: 1600 };
+    expect((await get(`/analytics/summary?experimentId=${launch._id}&${range}`)).current).toMatchObject(expected);
+    expect((await get(`/analytics/summary?campaign=store-launch&${range}`)).current).toMatchObject(expected);
+  });
+
+  it('buckets order sales by local day and covers order dates when no range is given', async () => {
+    const { points } = await get(`/analytics/timeseries?productId=${store._id}&from=2026-09-01&to=2026-09-03&granularity=day`);
+    expect(points.map(({ key, spend, purchases, revenue }) => [key, spend, purchases, revenue])).toEqual([
+      ['2026-09-01', 300, 1, 400],
+      ['2026-09-02', 200, 1, 500],
+      ['2026-09-03', 0, 0, 0],
+    ]);
+    const all = await get(`/analytics/timeseries?productId=${store._id}&granularity=day`);
+    expect([all.from, all.to]).toEqual(['2026-09-01', '2026-09-06']);
+  });
+
+  it('ranks products with order sales', async () => {
+    const { items } = await get(`/analytics/products?${range}`);
+    expect(items.map(({ name, hasData, purchases, revenue }) => [name, hasData, purchases, revenue])).toEqual([
+      ['Ads only', true, 2, 2000],
+      ['Store', true, 3, 1300],
+      ['Orders only', true, 1, 700],
+    ]);
+  });
+});

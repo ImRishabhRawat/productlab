@@ -14,7 +14,7 @@ import { FilterBar, PageHeader, Section } from '../../components/ui/PageHeader.j
 import { EmptyState, ErrorState } from '../../components/ui/States.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { fmtNumber, fmtPercent, fmtRange } from '../../lib/format.js';
-import { hasActivity, recordedOnly } from '../../lib/metricDisplay.js';
+import { hasActivity, hasFunnel, recordedOnly } from '../../lib/metricDisplay.js';
 import { useAnalytics, useItem, useList } from '../../lib/queries.js';
 import { useSettings } from '../../lib/session.js';
 import { useSearchParamState } from '../../lib/useSearchParamState.js';
@@ -151,7 +151,7 @@ export default function AnalyticsPage() {
           <EmptyState
             icon={ChartLine}
             title="No activity in this period."
-            description="No ad metrics were recorded for this selection and date range."
+            description="No sales or ad results for this selection and date range."
             action={
               <div className="flex flex-wrap justify-center gap-2">
                 <Button variant="primary" icon={Plus} onClick={() => setRecording(true)}>
@@ -187,6 +187,8 @@ export default function AnalyticsPage() {
                 subtitle="Share that continues at each step"
                 height={null}
                 {...totalsState}
+                empty={summary.isSuccess && !hasFunnel(current)}
+                emptyMessage="No ad results in this period."
                 table={{
                   rowKey: 'key',
                   rows: funnel(current).stages,

@@ -50,11 +50,44 @@ function metricMatch(f = {}) {
   return m;
 }
 
+const AD_SCOPES = ['experimentId', 'experimentIds', 'creativeId', 'creativeIds', 'campaign'];
+const adScoped = (filter, keys = []) => AD_SCOPES.some((k) => filter[k]) || keys.some((k) => k !== 'date');
+
+function productScope(f) {
+  if (f.productIds) return { productId: inIds(f.productIds) };
+  return f.productId ? { productId: oid(f.productId) } : {};
+}
+
+async function orderSales(filter, byDate) {
+  const { timezone } = await getSettings();
+  const _id = { productId: '$productId' };
+  if (byDate) _id.date = { $dateToString: { format: '%Y-%m-%d', date: '$date', timezone } };
+  const [products, sales] = await Promise.all([
+    Order.distinct('productId', productScope(filter)),
+    Order.aggregate([{ $match: orderMatch(filter, timezone) }, { $group: { _id, purchases: { $sum: 1 }, revenue: { $sum: '$amount' } } }]),
+  ]);
+  return { products: new Set(products.map(String)), sales };
+}
+
 export async function metricRows(filter = {}, keys = []) {
   const groupKeys = [...new Set(['productId', ...keys])];
   const group = { _id: Object.fromEntries(groupKeys.map((k) => [k, `$${k}`])) };
   for (const f of METRIC_FIELDS) group[f] = { $sum: `$${f}` };
-  const rows = await CampaignMetric.aggregate([{ $match: metricMatch(filter) }, { $group: group }]);
+  const [ads, orders] = await Promise.all([
+    CampaignMetric.aggregate([{ $match: metricMatch(filter) }, { $group: group }]),
+    adScoped(filter, keys) ? null : orderSales(filter, keys.includes('date')),
+  ]);
+  const keyOf = (r) => groupKeys.map((k) => String(r[k])).join('|');
+  const merged = new Map();
+  for (const { _id, ...sums } of ads) {
+    const fromOrders = orders?.products.has(String(_id.productId));
+    merged.set(keyOf(_id), { _id, ...sums, ...(fromOrders && { purchases: 0, revenue: 0 }) });
+  }
+  for (const { _id, purchases, revenue } of orders?.sales ?? []) {
+    const k = keyOf(_id);
+    merged.set(k, { ...(merged.get(k) ?? { _id, ...emptyTotals() }), purchases, revenue });
+  }
+  const rows = [...merged.values()];
   if (!rows.length) return [];
   const products = await Product.find({ _id: { $in: uniqueIds(rows.map((r) => r._id.productId)) } })
     .select('costs')
@@ -93,13 +126,18 @@ export async function summaryWithCompare(filter = {}, prev = previousRange(filte
   };
 }
 
-export async function dataBounds(filter) {
+export async function dataBounds(filter = {}) {
   const match = metricMatch(filter);
-  const [first, last] = await Promise.all([
+  const { timezone } = await getSettings();
+  const orders = adScoped(filter) ? null : orderMatch(filter, timezone);
+  const edges = await Promise.all([
     CampaignMetric.findOne(match).sort({ date: 1 }).select('date').lean(),
     CampaignMetric.findOne(match).sort({ date: -1 }).select('date').lean(),
+    orders && Order.findOne(orders).sort({ date: 1 }).select('date').lean(),
+    orders && Order.findOne(orders).sort({ date: -1 }).select('date').lean(),
   ]);
-  return first ? { from: first.date, to: last.date } : null;
+  const dates = edges.map((e, i) => e && (i < 2 ? e.date : isoDateIn(e.date, timezone))).filter(Boolean).sort();
+  return dates.length ? { from: dates[0], to: dates.at(-1) } : null;
 }
 
 export async function timeseries(filter = {}) {
@@ -285,8 +323,7 @@ export async function graveyard() {
 }
 
 function orderMatch(filter, timezone) {
-  const m = { paymentStatus: 'paid' };
-  if (filter.productId) m.productId = oid(filter.productId);
+  const m = { paymentStatus: 'paid', ...productScope(filter) };
   if (filter.experimentId) m.experimentId = oid(filter.experimentId);
   if (filter.campaign) m.campaign = filter.campaign;
   if (filter.from || filter.to) {

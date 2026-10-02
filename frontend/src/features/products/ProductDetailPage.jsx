@@ -18,7 +18,7 @@ import { EmptyState, ErrorState, PageLoader, Skeleton } from '../../components/u
 import { Tabs } from '../../components/ui/Tabs.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { fmtCurrency, fmtDate, fmtMetric, fmtPercent, fmtRatio } from '../../lib/format.js';
-import { funnelTable, hasActivity, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
+import { funnelTable, hasActivity, hasFunnel, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
 import { useAnalytics, useItem, useList } from '../../lib/queries.js';
 import { AIInsightPanel } from '../ai/AIInsightPanel.jsx';
 import { DecisionModal, EvidenceGrid } from '../decisions/DecisionModal.jsx';
@@ -145,7 +145,7 @@ function NoActivity({ earlier, onRecord, onExperiment }) {
         icon={ChartLine}
         title={earlier ? 'No ad data in this period.' : 'No ad data yet.'}
         description={
-          earlier ? 'This product has earlier results. Widen the range to see them.' : 'Start a test, then record daily ad metrics to see revenue, CAC and ROAS here.'
+          earlier ? 'This product has earlier results. Widen the range to see them.' : 'Add orders or record daily ad results to see revenue, CAC and ROAS here.'
         }
         action={
           <div className="flex flex-wrap justify-center gap-2">
@@ -212,6 +212,8 @@ function Performance({ product, summary, allTime, series, points, granularity, b
           fetching={summary.isFetching}
           error={summary.error}
           onRetry={summary.refetch}
+          empty={summary.isSuccess && !hasFunnel(current)}
+          emptyMessage="No ad results in this period."
           table={funnelTable(current)}
         >
           <Funnel totals={current} />

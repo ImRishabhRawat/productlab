@@ -21,7 +21,7 @@ import { EmptyState, ErrorState, Skeleton } from '../../components/ui/States.jsx
 import { SegmentedControl } from '../../components/ui/Tabs.jsx';
 import { useDateRange } from '../../lib/dateRange.jsx';
 import { fmtCurrency, fmtDate, fmtDelta, fmtMetric, fmtNumber, fmtRange, fmtRelative, plural } from '../../lib/format.js';
-import { betterHint, funnelTable, hasActivity, metricColumn, metricOptions, moneyColumn, ranked, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
+import { betterHint, funnelTable, hasActivity, hasFunnel, metricColumn, metricOptions, moneyColumn, ranked, recordedOnly, seriesTable } from '../../lib/metricDisplay.js';
 import { useAnalytics } from '../../lib/queries.js';
 import { statusMeta } from '../../lib/status.js';
 import { useMediaQuery } from '../../lib/useMediaQuery.js';
@@ -176,7 +176,8 @@ export default function OverviewPage() {
       fetching={summary.isFetching}
       error={summary.error}
       onRetry={summary.refetch}
-      empty={noData}
+      empty={summary.isSuccess && !hasFunnel(current)}
+      emptyMessage="No ad results in this period."
       table={funnelTable(current)}
     >
       <Funnel totals={current} />

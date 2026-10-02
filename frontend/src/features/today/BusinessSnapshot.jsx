@@ -14,7 +14,7 @@ export function BusinessSnapshot({ business, className = '' }) {
     <Card className={`p-4 sm:p-5 ${className}`}>
       <CardHeader
         title="Business today"
-        subtitle={recorded ? 'From recorded ad metrics' : 'Nothing recorded for today yet'}
+        subtitle={recorded ? 'From orders and ad results' : 'Nothing recorded for today yet'}
         actions={
           <ButtonLink to="/" size="sm" variant="ghost">
             Overview

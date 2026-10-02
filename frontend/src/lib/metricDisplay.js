@@ -17,6 +17,7 @@ export const lowerIsBetter = (key) => METRICS[key].better === 'down';
 export const betterHint = (key) => (lowerIsBetter(key) ? 'Lower is better' : 'Higher is better');
 export const colorFor = (key) => METRIC_COLORS[key] ?? (lowerIsBetter(key) ? SERIES[1] : SERIES[0]);
 export const hasActivity = (t) => Boolean(t?.spend || t?.revenue || t?.impressions);
+export const hasFunnel = (t) => FUNNEL_STAGES.slice(0, -1).some((s) => t?.[s.key]);
 
 const UNRECORDED = Object.fromEntries(Object.keys(METRICS).map((key) => [key, null]));
 
